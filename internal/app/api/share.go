@@ -181,7 +181,7 @@ func (rs *ShareResource) withdrawal(c *gin.Context) {
 		return
 	}
 
-	ginutil.Cookie(c, ShareCookieTokenKey, token, int(share.ExpireAt.Sub(time.Now()).Seconds()))
+	ginutil.Cookie(c, ShareCookieTokenKey, token, int(time.Until(share.ExpireAt).Seconds()))
 	ginutil.JSON(c)
 }
 

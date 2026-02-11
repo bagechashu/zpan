@@ -7,6 +7,7 @@ import (
 	"github.com/saltbo/gopkg/regexputil"
 	"github.com/saltbo/gopkg/strutil"
 	"github.com/saltbo/zpan/internal/app/entity"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/saltbo/zpan/internal/app/dao"
 	"github.com/saltbo/zpan/internal/app/model"
@@ -36,10 +37,15 @@ func (u *User) Signup(email, password string, opt model.UserCreateOption) (*mode
 	}
 
 	// 创建基本信息
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
 	user := &model.User{
 		Email:    email,
 		Username: fmt.Sprintf("mu%s", strutil.RandomText(18)),
-		Password: strutil.Md5Hex(password),
+		Password: string(hashedPwd),
 		Roles:    opt.Roles,
 		Ticket:   strutil.RandomText(6),
 	}
@@ -88,7 +94,7 @@ func (u *User) SignIn(usernameOrEmail, password string, ttl int) (*model.User, e
 	user, exist := userFinder(usernameOrEmail)
 	if !exist {
 		return nil, fmt.Errorf("user not exist")
-	} else if user.Password != strutil.Md5Hex(password) {
+	} else if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, fmt.Errorf("invalid password")
 	} else if u.sMail.Enabled() && !user.Activated() {
 		return nil, fmt.Errorf("account is not activated")
@@ -110,13 +116,18 @@ func (u *User) PasswordUpdate(uid int64, oldPwd, newPwd string) error {
 	user, err := u.dUser.Find(uid)
 	if err != nil {
 		return err
-	} else if user.Password != strutil.Md5Hex(oldPwd) {
+	} else if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPwd)); err != nil {
 		return fmt.Errorf("error password")
 	} else if user.Username == "demo" {
 		return fmt.Errorf("user demo not allowed change password")
 	}
 
-	user.Password = strutil.Md5Hex(newPwd)
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(newPwd), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	user.Password = string(hashedPwd)
 	return u.dUser.Update(user)
 }
 

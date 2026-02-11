@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/saltbo/gopkg/ginutil"
 	_ "github.com/saltbo/gopkg/httputil"
-	"github.com/saltbo/gopkg/strutil"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/saltbo/zpan/internal/app/dao"
 	"github.com/saltbo/zpan/internal/app/model"
@@ -270,7 +270,12 @@ func (rs *UserResource) resetPassword(c *gin.Context) {
 		return
 	}
 
-	user.Password = strutil.Md5Hex(p.Password)
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)
+	if err != nil {
+		ginutil.JSONServerError(c, err)
+		return
+	}
+	user.Password = string(hashedPwd)
 	if err := rs.dUser.Update(user); err != nil {
 		ginutil.JSONServerError(c, err)
 		return

@@ -9,6 +9,7 @@ import (
 	"github.com/saltbo/gopkg/strutil"
 	"github.com/saltbo/zpan/internal/app/entity"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/saltbo/zpan/internal/app/dao"
 	"github.com/saltbo/zpan/internal/app/model"
@@ -90,10 +91,16 @@ func (rs *Option) createAdministrator(c *gin.Context) {
 		return
 	}
 	// 创建基本信息
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)
+	if err != nil {
+		ginutil.JSONServerError(c, err)
+		return
+	}
+
 	user := &model.User{
 		Email:    p.Email,
 		Username: "admin",
-		Password: strutil.Md5Hex(p.Password),
+		Password: string(hashedPwd),
 		Roles:    "admin",
 		Ticket:   strutil.RandomText(6),
 		Status:   model.StatusActivated,

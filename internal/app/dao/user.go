@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/saltbo/gopkg/strutil"
 	"github.com/saltbo/zpan/internal/app/entity"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -120,7 +120,12 @@ func (u *User) PasswordReset(uid int64, newPwd string) error {
 		return err
 	}
 
-	if err := gdb.Model(user).Update("password", strutil.Md5Hex(newPwd)).Error; err != nil {
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(newPwd), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	if err := gdb.Model(user).Update("password", string(hashedPwd)).Error; err != nil {
 		return err
 	}
 	// record the old password
