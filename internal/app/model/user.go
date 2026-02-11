@@ -49,7 +49,7 @@ type User struct {
 	Id        int64              `json:"id"`
 	Email     string             `json:"email" gorm:"size:32;unique_index;not null"`
 	Username  string             `json:"username" gorm:"size:20;unique_index;not null"`
-	Password  string             `json:"-" gorm:"size:32;not null"`
+	Password  string             `json:"-" gorm:"size:100;not null"`
 	Status    uint8              `json:"-" gorm:"size:1;not null"`
 	StatusTxt string             `json:"status" gorm:"-"`
 	Roles     string             `json:"-" gorm:"size:64;not null"`

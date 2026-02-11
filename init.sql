@@ -1,3 +1,6 @@
+-- create admin user after starting the application at first time.
+-- username: admin
+-- password: admin123
 INSERT INTO `mu_user` (
   `email`, 
   `username`, 
@@ -10,7 +13,7 @@ INSERT INTO `mu_user` (
 ) VALUES (
   'admin@example.com',
   'admin',
-  '0192023a7bbd73250516f069df18b500',
+  '$2a$10$fDCCdMXW.29afdMLvXnHt.xBiEHWFMEgmGFa8rI1qrwhzSp78xMBu',
   1,
   'admin',
   '000000',

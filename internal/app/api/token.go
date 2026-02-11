@@ -108,5 +108,4 @@ func (rs *TokenResource) create(c *gin.Context) {
 func (rs *TokenResource) delete(c *gin.Context) {
 	authed.TokenCookieSet(c, "", 1)
 	authed.RoleCookieSet(c, "", 1)
-	return
 }

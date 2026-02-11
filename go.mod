@@ -29,6 +29,7 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.72
 	github.com/upyun/go-sdk/v3 v3.0.4
+	golang.org/x/crypto v0.47.0
 	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.6.0
@@ -126,6 +127,7 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/swaggo/gin-swagger v1.2.0 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.3 // indirect
@@ -152,7 +154,6 @@ require (
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.22.0 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/mod v0.31.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
