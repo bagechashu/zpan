@@ -17,7 +17,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"strings"
@@ -801,7 +800,7 @@ func ParseResponseToBaseModel(resp *http.Response, baseModel IBaseModel, xmlResu
 				doLog(LEVEL_WARN, "Failed to close response body")
 			}
 		}()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err == nil && len(body) > 0 {
 			if xmlResult {
 				err = ParseXml(body, baseModel)

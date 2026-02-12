@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -108,7 +107,7 @@ func VerifyParamsWithLength(bucket string, object string, length int64) error {
 }
 
 func ParseXmlBody(body io.Reader, value interface{}) error {
-	content, err := ioutil.ReadAll(body)
+	content, err := io.ReadAll(body)
 	if err != nil {
 		return err
 	}
@@ -189,7 +188,7 @@ func ProcessServerError(response *http.Response, bucketName, objectName string) 
 		RequestId:  requestId,
 	}
 
-	content, err := ioutil.ReadAll(response.Body)
+	content, err := io.ReadAll(response.Body)
 	if err != nil {
 		nosErr = noserror.NewNosError("", noserror.ERROR_MSG_READCONTENT_ERROR, resource, requestId)
 		serverError.NosErr = nosErr
