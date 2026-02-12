@@ -70,11 +70,17 @@ func (u *User) TicketExist(ticket string) (*model.User, bool) {
 
 func (u *User) userExist(k, v string) (*model.User, bool) {
 	user := new(model.User)
-	if err := gdb.Where(k+"=?", v).First(user).Error; !errors.Is(err, gorm.ErrRecordNotFound) {
-		return user, true
+	err := gdb.Where(k+"=?", v).First(user).Error
+	if err != nil {
+		// if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 	// User does not exist
+		// 	return nil, false
+		// }
+		// Other database errors: log and return not found to prevent using invalid data
+		return nil, false
 	}
 
-	return nil, false
+	return user, true
 }
 
 func (u *User) Create(user *model.User, storageMax uint64) (*model.User, error) {

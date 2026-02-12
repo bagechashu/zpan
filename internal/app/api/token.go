@@ -80,6 +80,7 @@ func (rs *TokenResource) create(c *gin.Context) {
 		}
 
 		ginutil.JSON(c)
+		return
 	}
 
 	// issue a signIn token into cookies

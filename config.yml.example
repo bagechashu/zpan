@@ -1,0 +1,18 @@
+# 数据库配置
+database:
+  driver: sqlite3
+  dsn: zpan.db
+
+# 日志级别: debug, info, warn, error (default: info)
+loglevel: info
+
+# ldap 配置
+ldap:
+  enabled: false
+  url: "ldap://127.0.0.1:389"
+  bind_dn: "cn=admin,dc=example,dc=com"
+  bind_password: ""
+  base_dn: "ou=people,dc=example,dc=com"
+  user_filter: "(uid=%s)"
+  user_attribute: "uid"
+  start_tls: false # Set to true to use STARTTLS on ldap://

@@ -3,15 +3,20 @@ package service
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/saltbo/gopkg/regexputil"
 	"github.com/saltbo/gopkg/strutil"
 	"github.com/saltbo/zpan/internal/app/entity"
+	"github.com/saltbo/zpan/internal/pkg/ldap"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/saltbo/zpan/internal/app/dao"
 	"github.com/saltbo/zpan/internal/app/model"
 )
+
+// LDAPPasswordPrefix marks a user as LDAP-only, prevents local password auth
+const LDAPPasswordPrefix = "!LDAP"
 
 type User struct {
 	dUser *dao.User
@@ -19,6 +24,7 @@ type User struct {
 
 	sToken *Token
 	sMail  *Mail
+	auth   *ldap.LDAPAuthenticator
 }
 
 func NewUser() *User {
@@ -28,6 +34,7 @@ func NewUser() *User {
 
 		sToken: NewToken(),
 		sMail:  NewMail(),
+		auth:   ldap.Init(),
 	}
 }
 
@@ -56,7 +63,7 @@ func (u *User) Signup(email, password string, opt model.UserCreateOption) (*mode
 
 	// 如果如果启用了发信邮箱则发送一份激活邮件给用户
 	if u.sMail.Enabled() {
-		token, err := u.sToken.Create(user.IDString(), 3600*24, user.Roles)
+		token, err := u.sToken.Create(mUser.IDString(), 3600*24, mUser.Roles)
 		if err != nil {
 			return nil, err
 		}
@@ -86,17 +93,61 @@ func (u *User) Active(token string) error {
 }
 
 func (u *User) SignIn(usernameOrEmail, password string, ttl int) (*model.User, error) {
-	userFinder := u.dUser.UsernameExist
-	if regexputil.EmailRegex.MatchString(usernameOrEmail) {
-		userFinder = u.dUser.EmailExist
+	var user *model.User
+	var exist bool
+	
+	// Try LDAP authentication if enabled
+	ldapEnabled := u.auth != nil && u.auth.IsEnabled()
+	if ldapEnabled {
+		email, ldapErr := u.auth.Authenticate(usernameOrEmail, password)
+		if ldapErr == nil && email != "" {
+			// LDAP authentication successful
+			user, exist = u.dUser.EmailExist(email)
+			if !exist {
+				// Create new user from LDAP
+				user = &model.User{
+					Email:    email,
+					Username: fmt.Sprintf("mu%s", strutil.RandomText(18)),
+					Password: LDAPPasswordPrefix + strutil.RandomText(32),
+					Roles:    model.RoleMember,
+					Ticket:   strutil.RandomText(6),
+					Status:   model.StatusActivated,
+				}
+				mUser, err := u.dUser.Create(user, 0)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create user: %w", err)
+				}
+				user = mUser
+			}
+		} else {
+			// LDAP failed - only allow admin fallback to local password
+			user, exist = u.findUserByUsernameOrEmail(usernameOrEmail)
+			if !exist || !u.isAdmin(user) {
+				return nil, fmt.Errorf("authentication failed")
+			}
+			// Verify local password for admin fallback
+			if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+				return nil, fmt.Errorf("invalid password")
+			}
+		}
+	} else {
+		// LDAP disabled - use local authentication only
+		userFinder := u.dUser.UsernameExist
+		if regexputil.EmailRegex.MatchString(usernameOrEmail) {
+			userFinder = u.dUser.EmailExist
+		}
+		user, exist = userFinder(usernameOrEmail)
+		if !exist {
+			return nil, fmt.Errorf("user not exist")
+		}
+		// Verify local password
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+			return nil, fmt.Errorf("invalid password")
+		}
 	}
 
-	user, exist := userFinder(usernameOrEmail)
-	if !exist {
-		return nil, fmt.Errorf("user not exist")
-	} else if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return nil, fmt.Errorf("invalid password")
-	} else if u.sMail.Enabled() && !user.Activated() {
+	// Check if account is activated
+	if u.sMail.Enabled() && !user.Activated() {
 		return nil, fmt.Errorf("account is not activated")
 	}
 
@@ -110,6 +161,28 @@ func (u *User) SignIn(usernameOrEmail, password string, ttl int) (*model.User, e
 
 func (u *User) SignOut() {
 
+}
+
+// findUserByUsernameOrEmail finds user by username or email
+func (u *User) findUserByUsernameOrEmail(usernameOrEmail string) (*model.User, bool) {
+	if regexputil.EmailRegex.MatchString(usernameOrEmail) {
+		return u.dUser.EmailExist(usernameOrEmail)
+	}
+	return u.dUser.UsernameExist(usernameOrEmail)
+}
+
+// isAdmin checks if user has admin role
+func (u *User) isAdmin(user *model.User) bool {
+	if user == nil {
+		return false
+	}
+	roles := strings.Split(user.Roles, ",")
+	for _, role := range roles {
+		if strings.TrimSpace(role) == model.RoleAdmin {
+			return true
+		}
+	}
+	return false
 }
 
 func (u *User) PasswordUpdate(uid int64, oldPwd, newPwd string) error {
