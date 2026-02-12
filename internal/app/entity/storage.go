@@ -49,10 +49,3 @@ func (s *Storage) TableName() string {
 func (s *Storage) PublicRead() bool {
 	return s.Mode == StorageModeOutline
 }
-
-func (s *Storage) SKAsterisk() (sk string) {
-	for range s.SecretKey {
-		sk += "*"
-	}
-	return
-}

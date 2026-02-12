@@ -1,6 +1,8 @@
 package api
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/saltbo/gopkg/ginutil"
 	"github.com/saltbo/gopkg/jwtutil"
@@ -56,7 +58,10 @@ func (rs *StorageResource) findAll(c *gin.Context) {
 	}
 
 	lo.Map(list, func(item *entity.Storage, index int) *entity.Storage {
-		item.SecretKey = item.SKAsterisk()
+		ak_prefix := item.AccessKey[:5]
+		ak_suffix := item.AccessKey[len(item.AccessKey)-3:]
+		item.AccessKey = ak_prefix + strings.Repeat("*", len(item.AccessKey)-8) + ak_suffix
+		item.SecretKey = strings.Repeat("*", len(item.SecretKey))
 		return item
 	})
 
