@@ -81,7 +81,8 @@ func (la *LDAPAuthenticator) dial() (*ldap.Conn, error) {
 
 	schema := strings.Split(la.config.Url, "://")[0]
 	var dialOpts []ldap.DialOpt
-	dialOpts = append(dialOpts, ldap.DialWithDialer(&net.Dialer{Timeout: 5 * time.Second}))
+	timeoutDuration := time.Duration(la.config.Timeout) * time.Second
+	dialOpts = append(dialOpts, ldap.DialWithDialer(&net.Dialer{Timeout: timeoutDuration}))
 
 	// For LDAPS, pass TLS config during dial
 	if schema == "ldaps" {
@@ -101,7 +102,8 @@ func (la *LDAPAuthenticator) dial() (*ldap.Conn, error) {
 		}
 	}
 
-	conn.SetTimeout(10 * time.Second)
+	// Set operation timeout (for search and bind operations)
+	conn.SetTimeout(time.Duration(la.config.Timeout) * time.Second)
 	return conn, nil
 }
 
