@@ -6,6 +6,12 @@ database:
 # 日志级别: debug, info, warn, error (default: info)
 loglevel: info
 
+# 文件共享配置
+# 当启用时，所有用户上传的文件对所有认证用户可见
+# 默认为 false（仅文件所有者可见）
+share:
+  all_files: false
+
 # ldap 配置
 ldap:
   enabled: false
