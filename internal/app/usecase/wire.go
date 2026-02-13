@@ -9,6 +9,7 @@ import (
 
 type Repository struct {
 	Storage  storage.Storage
+	CloudStorageScanner  storage.CloudStorageScanner
 	Uploader uploader.Uploader
 	VFS      vfs.VirtualFs
 }
@@ -19,6 +20,7 @@ func NewRepository(storage storage.Storage, uploader uploader.Uploader, VFS vfs.
 
 var ProviderSet = wire.NewSet(
 	storage.NewCloudStorage,
+	storage.NewCloudStorageScanner,
 	uploader.NewCloudUploader,
 	vfs.NewVfs,
 	vfs.NewRecycleBin,

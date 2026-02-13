@@ -57,3 +57,15 @@ type StorageQuery struct {
 
 	Name string `json:"name"`
 }
+
+type CloudStorageScanRequest struct {
+	Prefix string `json:"prefix" binding:""`  // optional prefix to scan
+}
+
+type CloudStorageScanResponse struct {
+	Total   int64    `json:"total"`    // total objects found
+	Created int64    `json:"created"`  // total matters created
+	Skipped int64    `json:"skipped"`  // total matters skipped
+	Failed  int64    `json:"failed"`   // total failures
+	Errors  []string `json:"errors"`   // error messages
+}

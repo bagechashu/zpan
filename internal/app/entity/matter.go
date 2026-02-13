@@ -1,7 +1,6 @@
 package entity
 
 import (
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -85,7 +84,14 @@ func (m *Matter) SetUploadedAt() {
 }
 
 func (m *Matter) FullPath() string {
-	fp := path.Join(m.Parent, m.Name)
+	var fp string
+	if m.Parent == "" {
+		// Root level items
+		fp = "/" + m.Name
+	} else {
+		// Ensure parent doesn't have trailing slash, then join with name
+		fp = strings.TrimSuffix(m.Parent, "/") + "/" + m.Name
+	}
 	if m.IsDir() {
 		fp += "/"
 	}
