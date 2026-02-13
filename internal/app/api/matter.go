@@ -8,6 +8,7 @@ import (
 	"github.com/saltbo/zpan/internal/app/usecase/vfs"
 	"github.com/saltbo/zpan/internal/pkg/authed"
 	"github.com/saltbo/zpan/internal/pkg/bind"
+	"github.com/spf13/viper"
 )
 
 type FileResource struct {
@@ -37,10 +38,16 @@ func (rs *FileResource) findAll(c *gin.Context) {
 		return
 	}
 
+	// Check if share_all_files is enabled in config
+	var uid int64 = 0 // Default: show all users' files
+	if !viper.GetBool("share.all_files") {
+		uid = authed.UidGet(c) // Only show current user's files
+	}
+
 	opt := &repo.MatterListOption{
 		QueryPage: repo.QueryPage(p.QueryPage),
 		Sid:       p.Sid,
-		Uid:       authed.UidGet(c),
+		Uid:       uid,
 		Dir:       p.Dir,
 		Type:      p.Type,
 		Keyword:   p.Keyword,
