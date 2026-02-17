@@ -1,17 +1,77 @@
-package authz
+package middleware
 
 import (
 	"bytes"
+	"context"
+	_ "embed"
 	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/open-policy-agent/opa/v1/rego"
+	"github.com/saltbo/zpan/internal/pkg/auth"
 	"github.com/saltbo/zpan/internal/pkg/logger"
+	"github.com/spf13/viper"
 )
 
-// MaxBufferSize is the maximum size of response we'll buffer in memory (10MB)
-// Larger responses are streamed directly without buffering
-const MaxBufferSize = 10 * 1024 * 1024 // 10MB
+type Config struct {
+	ShareAllFiles bool `json:"share_all_files"`
+}
+
+type Input struct {
+	Uid        int64       `json:"uid"`
+	Roles      []string    `json:"roles"`
+	Path       string      `json:"path"`
+	Method     string      `json:"method"`
+	PathParams []gin.Param `json:"path_params"`
+	Resource   any         `json:"resource"`
+	Config     Config      `json:"config"`
+}
+
+//go:embed opa.rego
+var oparules string
+
+func OpaMiddleware(c *gin.Context) {
+	bw := NewWriter(c.Writer)
+	c.Writer = bw
+	c.Next()
+
+	input := &Input{
+		Uid:        auth.UidGet(c),
+		Roles:      c.GetStringSlice("role"),
+		Path:       c.FullPath(),
+		Method:     c.Request.Method,
+		PathParams: c.Params,
+		Resource:   bw.extractResource(),
+		Config: Config{
+			ShareAllFiles: viper.GetBool("share.all_files"),
+		},
+	}
+
+	if rs, err := decision(c, input); err != nil {
+		_ = c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	} else if !rs.Allowed() {
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
+
+	bw.WriteNow()
+}
+
+func decision(ctx context.Context, input *Input) (rego.ResultSet, error) {
+	r := rego.New(
+		rego.Query("data.middleware.allow"),
+		rego.Module("opa.rego", oparules),
+	)
+
+	query, err := r.PrepareForEval(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return query.Eval(ctx, rego.EvalInput(input))
+}
 
 type Writer struct {
 	gin.ResponseWriter
@@ -26,6 +86,10 @@ type Writer struct {
 	bufferSize int
 }
 
+// maxBufferSize is the maximum size of response we'll buffer in memory (1MB)
+// Larger responses are streamed directly without buffering
+const maxBufferSize = 1024 * 1024 // 1MB
+
 func NewWriter(rw gin.ResponseWriter) *Writer {
 	return &Writer{
 		ResponseWriter: rw,
@@ -38,13 +102,13 @@ func NewWriter(rw gin.ResponseWriter) *Writer {
 // Returns the number of bytes written and any error
 func (w *Writer) Write(p []byte) (n int, err error) {
 	// If we've already exceeded buffer size, stream directly
-	if w.bufferSize >= MaxBufferSize {
+	if w.bufferSize >= maxBufferSize {
 		return w.ResponseWriter.Write(p)
 	}
 
 	// Check if this write would exceed our buffer limit
 	newSize := w.bufferSize + len(p)
-	if newSize > MaxBufferSize {
+	if newSize > maxBufferSize {
 		// Buffer is full - flush what we have and mark as incomplete
 		if w.buffer.Len() > 0 {
 			_, _ = w.ResponseWriter.Write(w.buffer.Bytes())

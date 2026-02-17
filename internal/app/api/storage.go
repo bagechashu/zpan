@@ -10,7 +10,7 @@ import (
 	"github.com/saltbo/zpan/internal/app/entity"
 	"github.com/saltbo/zpan/internal/app/repo"
 	"github.com/saltbo/zpan/internal/app/usecase/storage"
-	"github.com/saltbo/zpan/internal/pkg/authed"
+	"github.com/saltbo/zpan/internal/pkg/auth"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 
@@ -141,7 +141,7 @@ func (rs *StorageResource) scanObjects(c *gin.Context) {
 	}
 
 	storageID := ginutil.ParamInt64(c, "id")
-	uid := authed.UidGet(c)
+	uid := auth.UidGet(c)
 
 	// Call scanner
 	result, err := rs.cloudStorageScanner.ScanObjects(c, uid, storageID, p.Prefix)

@@ -63,7 +63,7 @@ func (u *User) Signup(email, password string, opt model.UserCreateOption) (*mode
 
 	// 如果如果启用了发信邮箱则发送一份激活邮件给用户
 	if u.sMail.Enabled() {
-		token, err := u.sToken.Create(mUser.IDString(), 3600*24, mUser.Roles)
+		token, err := u.sToken.Create(mUser.IDString(), mUser.Username, 3600*24, mUser.Roles)
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +151,7 @@ func (u *User) SignIn(usernameOrEmail, password string, ttl int) (*model.User, e
 		return nil, fmt.Errorf("account is not activated")
 	}
 
-	token, err := u.sToken.Create(user.IDString(), ttl, user.Roles)
+	token, err := u.sToken.Create(user.IDString(), user.Username, ttl, user.Roles)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (u *User) PasswordResetApply(origin, email string) error {
 	}
 
 	// issue a short-term token for password reset
-	token, err := u.sToken.Create(user.IDString(), 300)
+	token, err := u.sToken.Create(user.IDString(), user.Username, 300)
 	if err != nil {
 		return err
 	}

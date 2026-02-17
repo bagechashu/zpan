@@ -6,7 +6,7 @@ import (
 	"github.com/saltbo/zpan/internal/app/dao"
 	"github.com/saltbo/zpan/internal/app/model"
 	"github.com/saltbo/zpan/internal/app/service"
-	"github.com/saltbo/zpan/internal/pkg/authed"
+	"github.com/saltbo/zpan/internal/pkg/auth"
 	"github.com/saltbo/zpan/internal/pkg/bind"
 )
 
@@ -47,7 +47,7 @@ func (rs *UserKeyResource) create(c *gin.Context) {
 		return
 	}
 
-	uk := model.NewUserKey(authed.UidGet(c), p.Name)
+	uk := model.NewUserKey(auth.UidGet(c), p.Name)
 	if err := rs.sUserKey.Create(uk); err != nil {
 		ginutil.JSONServerError(c, err)
 		return
@@ -68,7 +68,7 @@ func (rs *UserKeyResource) create(c *gin.Context) {
 // @Failure 500 {object} httputil.JSONResponse
 // @Router /user/keys/{name} [get]
 func (rs *UserKeyResource) find(c *gin.Context) {
-	uk, err := rs.dUserKey.Find(authed.UidGet(c), c.Param("name"))
+	uk, err := rs.dUserKey.Find(auth.UidGet(c), c.Param("name"))
 	if err != nil {
 		ginutil.JSONBadRequest(c, err)
 		return
@@ -89,7 +89,7 @@ func (rs *UserKeyResource) find(c *gin.Context) {
 // @Failure 500 {object} httputil.JSONResponse
 // @Router /user/keys/{name}/secret [patch]
 func (rs *UserKeyResource) reset(c *gin.Context) {
-	uk, err := rs.dUserKey.Find(authed.UidGet(c), c.Param("name"))
+	uk, err := rs.dUserKey.Find(auth.UidGet(c), c.Param("name"))
 	if err != nil {
 		ginutil.JSONBadRequest(c, err)
 		return
@@ -115,7 +115,7 @@ func (rs *UserKeyResource) reset(c *gin.Context) {
 // @Failure 500 {object} httputil.JSONResponse
 // @Router /user/keys/{name} [delete]
 func (rs *UserKeyResource) remove(c *gin.Context) {
-	uk, err := rs.dUserKey.Find(authed.UidGet(c), c.Param("name"))
+	uk, err := rs.dUserKey.Find(auth.UidGet(c), c.Param("name"))
 	if err != nil {
 		ginutil.JSONBadRequest(c, err)
 		return

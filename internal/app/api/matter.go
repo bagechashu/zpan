@@ -6,7 +6,7 @@ import (
 	"github.com/saltbo/zpan/internal/app/repo"
 	"github.com/saltbo/zpan/internal/app/usecase/uploader"
 	"github.com/saltbo/zpan/internal/app/usecase/vfs"
-	"github.com/saltbo/zpan/internal/pkg/authed"
+	"github.com/saltbo/zpan/internal/pkg/auth"
 	"github.com/saltbo/zpan/internal/pkg/bind"
 	"github.com/spf13/viper"
 )
@@ -41,7 +41,7 @@ func (rs *FileResource) findAll(c *gin.Context) {
 	// Check if share_all_files is enabled in config
 	var uid int64 = 0 // Default: show all users' files
 	if !viper.GetBool("share.all_files") {
-		uid = authed.UidGet(c) // Only show current user's files
+		uid = auth.UidGet(c) // Only show current user's files
 	}
 
 	opt := &repo.MatterListOption{
@@ -80,7 +80,7 @@ func (rs *FileResource) create(c *gin.Context) {
 		return
 	}
 
-	m := p.ToMatter(authed.UidGet(c))
+	m := p.ToMatter(auth.UidGet(c))
 	if err := rs.fs.Create(c, m); err != nil {
 		ginutil.JSONServerError(c, err)
 		return

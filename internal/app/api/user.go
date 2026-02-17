@@ -11,7 +11,7 @@ import (
 	"github.com/saltbo/zpan/internal/app/dao"
 	"github.com/saltbo/zpan/internal/app/model"
 	"github.com/saltbo/zpan/internal/app/service"
-	"github.com/saltbo/zpan/internal/pkg/authed"
+	"github.com/saltbo/zpan/internal/pkg/auth"
 	"github.com/saltbo/zpan/internal/pkg/bind"
 )
 
@@ -61,7 +61,7 @@ func (rs *UserResource) create(c *gin.Context) {
 		return
 	}
 
-	if !authed.IsAdmin(c) && rs.sUser.InviteRequired() && p.Ticket == "" {
+	if !auth.IsAdmin(c) && rs.sUser.InviteRequired() && p.Ticket == "" {
 		ginutil.JSONBadRequest(c, fmt.Errorf("ticket required"))
 		return
 	}
@@ -69,7 +69,7 @@ func (rs *UserResource) create(c *gin.Context) {
 	opt := model.NewUserCreateOption()
 	opt.Roles = model.RoleMember
 	opt.Ticket = p.Ticket
-	if authed.IsAdmin(c) {
+	if auth.IsAdmin(c) {
 		opt.Roles = p.Roles
 		opt.StorageMax = p.StorageMax
 	}
@@ -322,7 +322,7 @@ func (rs *UserResource) remove(c *gin.Context) {
 // @Failure 500 {object} httputil.JSONResponse
 // @Router /user [get]
 func (rs *UserResource) userMe(c *gin.Context) {
-	user, err := rs.dUser.Find(authed.UidGet(c))
+	user, err := rs.dUser.Find(auth.UidGet(c))
 	if err != nil {
 		ginutil.JSONServerError(c, err)
 		return
@@ -349,7 +349,7 @@ func (rs *UserResource) updatePassword(c *gin.Context) {
 		return
 	}
 
-	uid := authed.UidGet(c)
+	uid := auth.UidGet(c)
 	if err := rs.sUser.PasswordUpdate(uid, p.OldPassword, p.NewPassword); err != nil {
 		ginutil.JSONServerError(c, err)
 		return
@@ -376,7 +376,7 @@ func (rs *UserResource) updateProfile(c *gin.Context) {
 		return
 	}
 
-	user, err := rs.dUser.Find(authed.UidGet(c))
+	user, err := rs.dUser.Find(auth.UidGet(c))
 	if err != nil {
 		ginutil.JSONServerError(c, err)
 		return

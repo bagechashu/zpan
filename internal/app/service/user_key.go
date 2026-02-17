@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"strings"
+	"time"
 
 	"github.com/go-oauth2/oauth2/v4"
 	"github.com/go-oauth2/oauth2/v4/models"
@@ -43,7 +44,8 @@ func (uk *UserKey) Token(ctx context.Context, data *oauth2.GenerateBasic, isGenR
 	}
 
 	ttl := data.TokenInfo.GetAccessCreateAt().Add(data.TokenInfo.GetAccessExpiresIn()).Unix()
-	access, err = uk.sToken.Create(user.IDString(), int(ttl), user.Roles)
+	ttlSeconds := int(ttl - time.Now().Unix())
+	access, err = uk.sToken.Create(user.IDString(), user.Username, ttlSeconds, user.Roles)
 	if err != nil {
 		return
 	}

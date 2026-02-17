@@ -12,10 +12,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/saltbo/zpan/internal/app/dao"
+	"github.com/saltbo/zpan/internal/app/middleware"
 	"github.com/saltbo/zpan/internal/app/model"
 	"github.com/saltbo/zpan/internal/app/service"
 	"github.com/saltbo/zpan/internal/pkg/bind"
-	"github.com/saltbo/zpan/internal/pkg/middleware"
 	"github.com/saltbo/zpan/internal/pkg/provider"
 )
 
@@ -32,11 +32,9 @@ func NewOptionResource() *Option {
 }
 
 func (rs *Option) Register(router *gin.RouterGroup) {
+	router.Use(middleware.AuthMiddleware)
 	router.PUT("/system/database", rs.setupDatabase)
 	router.PUT("/system/account", rs.createAdministrator)
-
-	router.Use(middleware.Installer)
-	router.Use(middleware.LoginAuth())
 	router.GET("/system/providers", rs.providers)
 	router.GET("/system/matter-path-envs", rs.matterPathEnvs)
 	router.GET("/system/options/:name", rs.find)

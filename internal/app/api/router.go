@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/saltbo/gopkg/ginutil"
-	"github.com/saltbo/zpan/internal/app/usecase/authz"
+	"github.com/saltbo/zpan/internal/app/middleware"
 	_ "github.com/saltbo/zpan/internal/docs"
 	"github.com/saltbo/zpan/internal/pkg/logger"
 )
@@ -34,7 +34,8 @@ func SetupRoutes(ge *gin.Engine, repository *Repository) {
 	}
 
 	apiRouter := ge.Group("/api")
-	apiRouter.Use(authz.NewMiddleware)
+	apiRouter.Use(middleware.AuthMiddleware) // 认证中间件：验证 token 并设置用户身份
+	apiRouter.Use(middleware.OpaMiddleware)  // 授权中间件：检查权限
 	ginutil.SetupResource(apiRouter,
 		repository.option,
 		repository.file,

@@ -1,11 +1,20 @@
-FROM debian:10
+# Code Compile
+FROM golang:alpine AS build
 
-RUN apt-get update \
-    && apt-get install -y ca-certificates telnet procps curl
+# ENV GOPROXY=https://goproxy.cn
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64 
+WORKDIR /app
+COPY . .
 
-ENV APP_HOME /srv
-WORKDIR $APP_HOME
+RUN go build -ldflags="-w -s" -o zpan
 
-COPY bin/zpan $APP_HOME
+# Image Build
+FROM alpine:3.21
 
-CMD ["./zpan", "server"]
+WORKDIR /app
+COPY --from=build /app/zpan /app/zpan
+
+EXPOSE 9000
+
+ENTRYPOINT ["/app/zpan"]
+CMD ["server"]

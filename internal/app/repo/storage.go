@@ -51,8 +51,13 @@ func (s *StorageDBQuery) Update(ctx context.Context, id int64, storage *entity.S
 		return fmt.Errorf("storage not found")
 	}
 
-	// 如果SK是掩码则忽略
-	if strings.HasPrefix(storage.SecretKey, "***") {
+	// 如果AK包含掩码则忽略
+	if strings.Contains(storage.AccessKey, "***") {
+		storage.AccessKey = existStorage.AccessKey
+	}
+
+	// 如果SK包含掩码则忽略
+	if strings.Contains(storage.SecretKey, "***") {
 		storage.SecretKey = existStorage.SecretKey
 	}
 

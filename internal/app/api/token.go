@@ -8,9 +8,10 @@ import (
 	"github.com/go-oauth2/oauth2/v4/store"
 	"github.com/saltbo/gopkg/ginutil"
 	_ "github.com/saltbo/gopkg/httputil"
+	"github.com/spf13/viper"
 
 	"github.com/saltbo/zpan/internal/app/service"
-	"github.com/saltbo/zpan/internal/pkg/authed"
+	"github.com/saltbo/zpan/internal/pkg/auth"
 	"github.com/saltbo/zpan/internal/pkg/bind"
 	"github.com/saltbo/zpan/internal/pkg/logger"
 )
@@ -84,16 +85,27 @@ func (rs *TokenResource) create(c *gin.Context) {
 	}
 
 	// issue a signIn token into cookies
-	expireSec := 7 * 24 * 3600
-	user, err := rs.sUser.SignIn(p.Email, p.Password, expireSec)
+	// ⚠️ 使用配置中的 TTL，默认 15 分钟用于访问令牌
+	// 实际的登录会话可以通过 refresh token（使用更长的 TTL）来维护
+	accessTokenTTL := viper.GetInt("jwt.access_token_ttl")
+	if accessTokenTTL <= 0 {
+		accessTokenTTL = 15 * 60 // 默认 15 分钟
+	}
+	
+	user, err := rs.sUser.SignIn(p.Email, p.Password, accessTokenTTL)
 	if err != nil {
 		ginutil.JSONBadRequest(c, err)
 		return
 	}
 
-	authed.TokenCookieSet(c, user.Token, expireSec)
-	authed.RoleCookieSet(c, user.Roles, expireSec)
-	ginutil.JSON(c)
+	auth.TokenCookieSet(c, user.Token, accessTokenTTL)
+	// 返回 token 和用户信息，前端可将 token 存储在 localStorage
+	c.JSON(200, gin.H{
+		"token":    user.Token,
+		"uid":      user.Id,
+		"username": user.Username,
+		"roles":    user.Roles,
+	})
 }
 
 // delete godoc
@@ -107,6 +119,7 @@ func (rs *TokenResource) create(c *gin.Context) {
 // @Failure 500 {object} httputil.JSONResponse
 // @Router /tokens [delete]
 func (rs *TokenResource) delete(c *gin.Context) {
-	authed.TokenCookieSet(c, "", 1)
-	authed.RoleCookieSet(c, "", 1)
+	// 清除认证令牌 Cookie
+	auth.TokenCookieSet(c, "", -1)
+	ginutil.JSON(c)
 }

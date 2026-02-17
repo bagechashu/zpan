@@ -16,7 +16,7 @@ import (
 
 	"github.com/saltbo/zpan/internal/app/dao"
 	"github.com/saltbo/zpan/internal/app/model"
-	"github.com/saltbo/zpan/internal/pkg/authed"
+	"github.com/saltbo/zpan/internal/pkg/auth"
 	"github.com/saltbo/zpan/internal/pkg/bind"
 )
 
@@ -72,7 +72,7 @@ func (rs *ShareResource) findAll(c *gin.Context) {
 		return
 	}
 
-	list, total, err := rs.dShare.FindAll(authed.UidGet(c))
+	list, total, err := rs.dShare.FindAll(auth.UidGet(c))
 	if err != nil {
 		ginutil.JSONBadRequest(c, err)
 		return
@@ -96,7 +96,7 @@ func (rs *ShareResource) create(c *gin.Context) {
 
 	m := &model.Share{
 		Alias:    strutil.RandomText(12),
-		Uid:      authed.UidGet(c),
+		Uid:      auth.UidGet(c),
 		Name:     mMatter.Name,
 		Matter:   mMatter.Alias,
 		Type:     mMatter.Type,
@@ -181,7 +181,8 @@ func (rs *ShareResource) withdrawal(c *gin.Context) {
 		return
 	}
 
-	ginutil.Cookie(c, ShareCookieTokenKey, token, int(time.Until(share.ExpireAt).Seconds()))
+	// 使用安全的 Cookie 设置，包含 HttpOnly、Secure 和 SameSite 属性
+	auth.ShareCookieSet(c, ShareCookieTokenKey, token, int(time.Until(share.ExpireAt).Seconds()))
 	ginutil.JSON(c)
 }
 

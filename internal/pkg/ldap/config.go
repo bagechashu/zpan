@@ -33,5 +33,25 @@ func Init() *LDAPAuthenticator {
 		Timeout:      timeout,
 	}
 
+	// 验证 LDAP 配置
+	if config.Enabled {
+		if config.Url == "" {
+			panic(`CRITICAL: LDAP is enabled but ldap.url is not configured!`)
+		}
+		if config.BindDN == "" {
+			panic(`CRITICAL: LDAP is enabled but ldap.bind_dn is not configured!`)
+		}
+		if config.BindPassword == "" || config.BindPassword == "${LDAP_PASSWORD}" {
+			panic(`CRITICAL: LDAP is enabled but bind_password is not configured! 
+Please set the LDAP_PASSWORD environment variable.
+Example:
+  export LDAP_PASSWORD="your-ldap-password"
+  
+Or in docker-compose/systemd:
+  environment:
+    - LDAP_PASSWORD=your-ldap-password`)
+		}
+	}
+
 	return NewLDAPAuthenticator(config)
 }

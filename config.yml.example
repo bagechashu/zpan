@@ -12,12 +12,47 @@ loglevel: info
 share:
   all_files: false
 
+# JWT 配置（认证相关）
+jwt:
+  # JWT 签名密钥 - 必须从环境变量 JWT_SECRET 读取
+  # ⚠️ 重要：不要在此配置文件中硬编码密钥！
+  # 生成命令：openssl rand -base64 32
+  # 设置方法：export JWT_SECRET="your-generated-secret"
+  #
+  # Viper 自动支持环境变量（使用大写形式，用下划线分隔）：
+  # - 配置中的 jwt.secret 对应环境变量 JWT_SECRET
+  secret: ${JWT_SECRET}
+  
+  # 访问令牌过期时间（秒）- 当前使用此值进行认证
+  # 建议设置为 900 秒（15 分钟）用于 Web 应用
+  # - 较短的 TTL 降低泄露风险
+  # - 可根据应用场景调整（范围：300-3600 秒）
+  access_token_ttl: 900
+  
+  # 刷新令牌过期时间（秒） - 当前未使用，为未来留作准备
+  # 在实现 OAuth2.0 风格的 Refresh Token 流程时将使用此值
+  # 建议设置为 604800 秒（7 天）用于长期会话管理
+  # 当前可配置但不生效，静候未来版本启用
+  refresh_token_ttl: 604800
+  
+  # Cookie Secure 属性开关 (默认: true)
+  # ✅ true (生产环境): 仅在 HTTPS 上发送 Cookie
+  # ❌ false (开发/测试): 允许在 HTTP 上发送 Cookie（用于本地开发测试）
+  # ⚠️ 安全提示：生产环境务必使用 HTTPS 并设置为 true
+  cookie_secure: true
+
 # ldap 配置
 ldap:
   enabled: false
   url: "ldap://127.0.0.1:389"
   bind_dn: "cn=admin,dc=example,dc=com"
-  bind_password: ""
+  # ⚠️ 重要：不要在此配置文件中硬编码密码！
+  # 必须从环境变量 LDAP_PASSWORD 读取
+  # 设置方法：export LDAP_PASSWORD="your-ldap-password"
+  #
+  # Viper 自动支持环境变量（使用大写形式，用下划线分隔）：
+  # - 配置中的 ldap.bind_password 对应环境变量 LDAP_PASSWORD
+  bind_password: ${LDAP_PASSWORD}
   base_dn: "ou=people,dc=example,dc=com"
   user_filter: "(uid=%s)"
   user_attribute: "uid"
