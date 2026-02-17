@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/saltbo/zpan/internal/app/dao"
+	"github.com/saltbo/zpan/internal/app/entity"
 	"github.com/saltbo/zpan/internal/app/model"
 	"github.com/saltbo/zpan/internal/pkg/auth"
 	"github.com/saltbo/zpan/internal/pkg/bind"
@@ -198,7 +200,7 @@ func (rs *ShareResource) findShareMatter(c *gin.Context) {
 		return
 	}
 
-	mMatter, err := rs.dMatter.FindByAlias(c, share.Matter)
+	mMatter, err := rs.vfs.Get(c, share.Matter)
 	if err != nil {
 		ginutil.JSONServerError(c, err)
 		return
@@ -252,7 +254,18 @@ func (rs *ShareResource) findMatters(c *gin.Context) {
 		return
 	}
 
-	dir := fmt.Sprintf("%s%s", mMatter.FullPath(), p.Dir) // 设置父级目录
+	// p.Dir 已经是从前端传来的相对路径格式（如 "test/"），直接使用
+	dir := p.Dir
+	// 如果 dir 为空. 直接返回空 list, 避免误访问根目录下的所有文件
+	if dir == "" {
+		ginutil.JSONList(c, []*entity.Matter{}, 0)
+		return
+	}
+	// 如果 dir 不以 "/" 结尾，添加 "/" 以确保它被正确识别为目录
+	if !strings.HasSuffix(dir, "/") {
+		dir += "/"
+	}
+
 	list, total, err := rs.dMatter.FindAll(c, &repo.MatterListOption{
 		QueryPage: repo.QueryPage{Offset: p.Offset, Limit: p.Limit},
 		Uid:       mMatter.Uid,
@@ -261,6 +274,16 @@ func (rs *ShareResource) findMatters(c *gin.Context) {
 	if err != nil {
 		ginutil.JSONServerError(c, err)
 		return
+	}
+
+	// 为每个 matter 填充 URL 以支持直接下载
+	for _, m := range list {
+		if !m.IsDir() {
+			// 只为文件添加 URL，目录不需要
+			if mWithUrl, err := rs.vfs.Get(c, m.Alias); err == nil {
+				m.URL = mWithUrl.URL
+			}
+		}
 	}
 
 	ginutil.JSONList(c, list, total)
