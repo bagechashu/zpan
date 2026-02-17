@@ -23,7 +23,7 @@ package cmd
 
 import (
 	"github.com/saltbo/zpan/internal/app"
-	"github.com/saltbo/zpan/internal/pkg/logger"
+	"github.com/saltbo/zpan/internal/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,8 +33,8 @@ var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "A cloud disk base on the cloud service.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logLevel := viper.GetString("loglevel")
-		logger.Init(logLevel)
+		// 初始化所有配置常量（包含日志初始化）
+		config.Initialize()
 
 		s := app.InitializeServer()
 		return s.Run()

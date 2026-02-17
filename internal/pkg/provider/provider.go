@@ -15,10 +15,25 @@ var (
 	corsAllowHeaders = []string{"content-type", "content-disposition", "x-amz-acl"}
 )
 
-const (
-	defaultUploadExp   = time.Hour
-	defaultDownloadExp = time.Hour * 24
+// 可配置的过期时间变量 - 通过 SetDefault*Expiration 修改
+var (
+	defaultUploadExp   = 10 * time.Minute
+	defaultDownloadExp = 5 * time.Minute
 )
+
+// SetDefaultUploadExpiration 设置预签名上传 URL 的过期时间
+func SetDefaultUploadExpiration(exp time.Duration) {
+	if exp > 0 {
+		defaultUploadExp = exp
+	}
+}
+
+// SetDefaultDownloadExpiration 设置预签名下载 URL 的过期时间
+func SetDefaultDownloadExpiration(exp time.Duration) {
+	if exp > 0 {
+		defaultDownloadExp = exp
+	}
+}
 
 // Object is the basic operation unit
 type Object struct {

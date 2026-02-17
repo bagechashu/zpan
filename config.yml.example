@@ -12,6 +12,13 @@ loglevel: info
 share:
   all_files: false
 
+# 存储配置 - 预签名 URL 过期时间
+storage:
+  # 上传链接过期时间（秒），默认 600 秒（10分钟）
+  upload_expiration: 600
+  # 下载链接过期时间（秒），默认 300 秒（5分钟）
+  download_expiration: 300
+
 # JWT 配置（认证相关）
 jwt:
   # JWT 签名密钥 - 必须从环境变量 JWT_SECRET 读取
