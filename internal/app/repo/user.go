@@ -5,6 +5,7 @@ import (
 
 	"github.com/saltbo/zpan/internal/app/entity"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type User interface {
@@ -24,7 +25,24 @@ func NewUserDBQuery(q DBQuery) *UserDBQuery {
 }
 
 func (u *UserDBQuery) GetUserStorage(ctx context.Context, uid int64) (*entity.UserStorage, error) {
-	return u.Q().UserStorage.WithContext(ctx).Where(u.Q().UserStorage.Uid.Eq(uid)).First()
+	us, err := u.Q().UserStorage.WithContext(ctx).Where(u.Q().UserStorage.Uid.Eq(uid)).First()
+	if err == nil {
+		return us, nil
+	}
+
+	// If record not found, create a default storage quota
+	if err == gorm.ErrRecordNotFound {
+		us := &entity.UserStorage{
+			Uid: uid,
+			Max: entity.UserStorageDefaultSize,
+		}
+		if err := u.Q().UserStorage.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(us); err != nil {
+			return nil, err
+		}
+		return us, nil
+	}
+
+	return nil, err
 }
 
 func (u *UserDBQuery) UserStorageUsedIncr(ctx context.Context, matter *entity.Matter) error {
