@@ -72,7 +72,15 @@ func (rs *RecycleBinResource) delete(c *gin.Context) {
 }
 
 func (rs *RecycleBinResource) clean(c *gin.Context) {
-	if err := rs.rbf.Clean(c, ginutil.QueryInt64(c, "sid"), auth.UidGet(c)); err != nil {
+	sid := ginutil.QueryInt64(c, "sid")
+	
+	// 只有 admin 才能清理所有用户的回收站，否则只清理自己的
+	uid := int64(0)
+	if !auth.IsAdmin(c) {
+		uid = auth.UidGet(c)
+	}
+	
+	if err := rs.rbf.Clean(c, sid, uid); err != nil {
 		ginutil.JSONServerError(c, err)
 		return
 	}
