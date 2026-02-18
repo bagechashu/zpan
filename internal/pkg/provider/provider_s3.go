@@ -126,6 +126,7 @@ func (p *S3Provider) Head(object string) (*Object, error) {
 		Key:  object,
 		ETag: aws.StringValue(hOut.ETag),
 		Type: aws.StringValue(hOut.ContentType),
+		Size: aws.Int64Value(hOut.ContentLength),
 	}, nil
 }
 
@@ -148,6 +149,7 @@ func (p *S3Provider) List(prefix string) ([]Object, error) {
 			fObj := Object{
 				Key:  aws.StringValue(obj.Key),
 				ETag: strings.Trim(aws.StringValue(obj.ETag), `"`),
+				Size: aws.Int64Value(obj.Size),
 			}
 
 			objects = append(objects, fObj)

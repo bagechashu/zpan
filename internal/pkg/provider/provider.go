@@ -41,6 +41,7 @@ type Object struct {
 	ETag     string // file md5
 	FilePath string // local file path
 	Type     string // local file type, added or changed
+	Size     int64  // file size in bytes
 }
 
 type Provider interface {

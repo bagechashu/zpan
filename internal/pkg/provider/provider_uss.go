@@ -53,6 +53,7 @@ func (p *USSProvider) Head(object string) (*Object, error) {
 		Key:  object,
 		ETag: fi.MD5,
 		Type: fi.ContentType,
+		Size: fi.Size,
 	}, nil
 }
 

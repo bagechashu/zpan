@@ -156,6 +156,7 @@ func (s *CloudStorageScanner) parseObjectToMatter(uid, sid int64, obj provider.O
 	matter.Object = obj.Key
 	matter.Type = s.detectContentType(strings.ToLower(filepath.Ext(filename)))
 	matter.DirType = 0 // Treat as file (directories detected by keys ending with "/" in storage)
+	matter.Size = obj.Size
 	matter.SetUploadedAt()
 
 	return matter
