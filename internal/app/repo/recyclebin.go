@@ -34,7 +34,15 @@ func (r *RecycleBinDBQuery) Find(ctx context.Context, alias string) (*entity.Rec
 }
 
 func (r *RecycleBinDBQuery) FindAll(ctx context.Context, opts *RecycleBinFindOptions) (rows []*entity.RecycleBin, total int64, err error) {
-	q := r.Q().RecycleBin.WithContext(ctx).Where(r.Q().RecycleBin.Uid.Eq(opts.Uid), r.Q().RecycleBin.Sid.Eq(opts.Sid)).Order(r.Q().RecycleBin.Id.Desc())
+	q := r.Q().RecycleBin.WithContext(ctx).Order(r.Q().RecycleBin.Id.Desc())
+
+	// 如果指定了 Uid（非 admin 用户），则按 Uid 过滤
+	if opts.Uid != 0 {
+		q = q.Where(r.Q().RecycleBin.Uid.Eq(opts.Uid))
+	}
+
+	// 始终按 Sid 过滤
+	q = q.Where(r.Q().RecycleBin.Sid.Eq(opts.Sid))
 
 	if opts.Limit == 0 {
 		rows, err = q.Find()

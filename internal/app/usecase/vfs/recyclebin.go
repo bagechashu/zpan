@@ -2,9 +2,11 @@ package vfs
 
 import (
 	"context"
+	"strings"
 
 	"github.com/saltbo/zpan/internal/app/repo"
 	"github.com/saltbo/zpan/internal/app/usecase/storage"
+	"github.com/saltbo/zpan/internal/pkg/logger"
 )
 
 var _ RecycleBinFs = (*RecycleBin)(nil)
@@ -50,6 +52,20 @@ func (rb *RecycleBin) Delete(ctx context.Context, alias string) error {
 	}
 
 	objects, _ := rb.matterRepo.GetObjects(ctx, matter.Id)
+	logger.Debug("recyclebin delete obj: %v", objects)
+	
+	// For directories, add the directory object itself (path + "/" in storage)
+	// This ensures the directory marker object in OBS is also deleted
+	if matter.IsDir() {
+		storage, err := rb.storage.Get(ctx, matter.Sid)
+		if err == nil && storage != nil {
+			// Build the directory object key: rootPath + matter.FullPath()
+			dirKey := storage.RootPath + strings.TrimLeft(matter.FullPath(), "/")
+			objects = append(objects, dirKey)
+		}
+	}
+	logger.Debug("recyclebin delete obj: %v", objects)
+	
 	if len(objects) != 0 {
 		if err := provider.ObjectsDelete(objects); err != nil {
 			return err

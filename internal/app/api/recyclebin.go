@@ -34,9 +34,14 @@ func (rs *RecycleBinResource) findAll(c *gin.Context) {
 
 	opts := &repo.RecycleBinFindOptions{
 		QueryPage: repo.QueryPage(p.QueryPage),
-		Uid:       auth.UidGet(c),
 		Sid:       p.Sid,
 	}
+
+	// 只有 admin 才能查看所有用户的回收站文件，否则只能查看自己的
+	if !auth.IsAdmin(c) {
+		opts.Uid = auth.UidGet(c)
+	}
+
 	list, total, err := rs.rbr.FindAll(c, opts)
 	if err != nil {
 		ginutil.JSONServerError(c, err)

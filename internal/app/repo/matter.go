@@ -19,7 +19,7 @@ import (
 
 type MatterListOption struct {
 	QueryPage
-	Sid     int64
+	Sid     int64 // storage id
 	Uid     int64
 	Dir     string
 	Type    string
@@ -193,9 +193,19 @@ func (db *MatterDBQuery) Update(ctx context.Context, id int64, m *entity.Matter)
 		tq := tx.Matter.WithContext(ctx)
 		if m.IsDir() {
 			// 如果是目录，则需要把该目录下的子文件/目录一并修改
-			cond := tx.Matter.Parent.Like(em.FullPath() + "%")
-			updated := map[string]any{"parent": gorm.Expr("REPLACE(parent, ?, ?)", em.FullPath(), m.FullPath())}
-			if _, err := tq.Select(tx.Matter.Parent).Where(cond).Updates(updated); err != nil {
+			emFullPath := em.FullPath()
+			emPathWithoutSlash := strings.TrimLeft(emFullPath, "/")
+			mFullPath := m.FullPath()
+			
+			updated := map[string]any{"parent": gorm.Expr("REPLACE(parent, ?, ?)", emFullPath, mFullPath)}
+			q := tq.Where(tx.Matter.Parent.Eq(emFullPath)).Or(
+				tx.Matter.Parent.Eq(emPathWithoutSlash),
+			).Or(
+				tx.Matter.Parent.Like(emFullPath + "%"),
+			).Or(
+				tx.Matter.Parent.Like(emPathWithoutSlash + "%"),
+			)
+			if _, err := q.Select(tx.Matter.Parent).Updates(updated); err != nil {
 				return err
 			}
 		}
@@ -216,16 +226,36 @@ func (db *MatterDBQuery) Delete(ctx context.Context, id int64) error {
 		tq := tx.Matter.WithContext(ctx)
 		if m.IsDir() {
 			// 如果是目录，则需要把该目录下的子文件/目录一并删除
-			cond := tx.Matter.Parent.Like(m.Name + "/%")
-			if _, err := tq.Where(cond).Update(tx.Matter.TrashedBy, m.TrashedBy); err != nil {
+			fullPath := m.FullPath()
+			pathWithoutLeadingSlash := strings.TrimLeft(fullPath, "/")
+			
+			// Build query conditions that handle different parent path formats
+			q := tq.Where(tx.Matter.Parent.Eq(fullPath)).Or(
+				tx.Matter.Parent.Eq(pathWithoutLeadingSlash),
+			).Or(
+				tx.Matter.Parent.Like(fullPath + "%"),
+			).Or(
+				tx.Matter.Parent.Like(pathWithoutLeadingSlash + "%"),
+			)
+			
+			if _, err := q.Update(tx.Matter.TrashedBy, m.TrashedBy); err != nil {
 				return err
 			}
-			if _, err := tq.Where(cond).Delete(); err != nil {
+			
+			q = tq.Where(tx.Matter.Parent.Eq(fullPath)).Or(
+				tx.Matter.Parent.Eq(pathWithoutLeadingSlash),
+			).Or(
+				tx.Matter.Parent.Like(fullPath + "%"),
+			).Or(
+				tx.Matter.Parent.Like(pathWithoutLeadingSlash + "%"),
+			)
+			
+			if _, err := q.Delete(); err != nil {
 				return err
 			}
 		}
 
-		if _, err := tq.Select(tx.Matter.TrashedBy).Updates(m); err != nil {
+		if _, err := tq.Where(tx.Matter.Id.Eq(m.Id)).Select(tx.Matter.TrashedBy).Updates(m); err != nil {
 			return err
 		}
 		_, err := tq.Delete(m)
@@ -276,5 +306,19 @@ func (db *MatterDBQuery) findChildren(ctx context.Context, m *entity.Matter, wit
 		q = q.Unscoped()
 	}
 
-	return q.Where(db.Q().Matter.Parent.Like(m.FullPath() + "%")).Find()
+	// Build query conditions that handle different parent path formats
+	fullPath := m.FullPath()
+	pathWithoutLeadingSlash := strings.TrimLeft(fullPath, "/")
+	
+	// Find both direct children and nested items
+	// Handle cases where parent might be stored in different formats
+	return q.Where(
+		db.Q().Matter.Parent.Eq(fullPath),
+	).Or(
+		db.Q().Matter.Parent.Eq(pathWithoutLeadingSlash),
+	).Or(
+		db.Q().Matter.Parent.Like(fullPath + "%"),
+	).Or(
+		db.Q().Matter.Parent.Like(pathWithoutLeadingSlash + "%"),
+	).Find()
 }
