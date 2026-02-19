@@ -29,9 +29,9 @@ is_public_route if {
     input.method == "POST"
     input.path == "/api/users"
 } else if {
-    # PATCH /api/users (修改用户 - 任何人都可以修改自己的信息)
+    # PATCH /api/users/:email (账户激活、密码重置 - 任何人都可以操作自己的账户)
     input.method == "PATCH"
-    input.path == "/api/users"
+    regex.match(`^/api/users/.+$`, input.path)
 } else if {
     # GET /api/shares/** (查看分享)
     input.method == "GET"
@@ -48,6 +48,22 @@ is_public_route if {
 
 # 仅管理员可以访问的路由
 requires_admin if {
+    # PUT /api/system/database (系统初始化 - 仅在未安装时允许，需代码检查)
+    input.method == "PUT"
+    input.path == "/api/system/database"
+} else if {
+    # PUT /api/system/account (创建管理员 - 仅在未安装时允许，需代码检查)
+    input.method == "PUT"
+    input.path == "/api/system/account"
+} else if {
+    # GET /api/system/providers (仅管理员可查看存储提供商)
+    input.method == "GET"
+    input.path == "/api/system/providers"
+} else if {
+    # GET /api/system/matter-path-envs (仅管理员可查看环境变量)
+    input.method == "GET"
+    input.path == "/api/system/matter-path-envs"
+} else if {
     # POST /api/storages
     input.method == "POST"
     input.path == "/api/storages"
@@ -55,6 +71,10 @@ requires_admin if {
     # PUT/PATCH/DELETE /api/storages/**
     input.method in ["PUT", "PATCH", "DELETE"]
     startswith(input.path, "/api/storages/")
+} else if {
+    # POST /api/storages/:id/scan (仅管理员可扫描存储)
+    input.method == "POST"
+    regex.match(`^/api/storages/.+/scan$`, input.path)
 } else if {
     # GET /api/users (仅管理员可查看用户列表)
     input.method == "GET"
@@ -71,6 +91,13 @@ requires_admin if {
     # GET /api/system/options/core.email (仅管理员可查看邮件配置)
     input.method == "GET"
     input.path == "/api/system/options/core.email"
+}
+
+# 仅登录用户可以访问的路由（非管理员用户也可以）
+requires_login if {
+    # GET /api/storages (仅登录用户可查看存储列表)
+    input.method == "GET"
+    input.path == "/api/storages"
 }
 
 # 检查是否是匿名用户
@@ -102,10 +129,17 @@ allow if {
 # Note: Anonymous users accessing non-public routes and logged-in users without admin
 # accessing admin routes are implicitly denied (not covered by any allow rule)
 
-# 已登录用户访问非管理路由 → 需要进行资源级别检查
+# 已登录用户访问仅登录路由 → 允许
+allow if {
+    not is_anonymous
+    requires_login
+}
+
+# 已登录用户访问非管理路由（需要认证的路由）→ 需要进行资源级别检查
 allow if {
     not is_anonymous
     not requires_admin
+    not requires_login
     not is_public_route
     valid_resource_access
 }
@@ -156,7 +190,9 @@ can_delete_resource if {
     input.resource.data.uid == input.uid
 }
 
-# 创建权限：通常允许（由业务逻辑检查）
+# 创建权限：用户自己创建的资源（通常允许）
 can_create_resource if {
     input.uid > 0
+    # 如果有资源 uid，必须是用户自己创建
+    input.resource == null
 }
