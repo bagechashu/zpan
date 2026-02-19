@@ -29,7 +29,7 @@ func (u *User) Find(uid int64) (*model.User, error) {
 	gdb.Model(user).Association("Profile").Find(&user.Profile)
 	gdb.Model(user).Association("Storage").Find(&user.Storage)
 
-	return user, nil
+	return user.Format(), nil
 }
 
 func (u *User) FindByUsername(username string) (*model.User, error) {
@@ -40,7 +40,7 @@ func (u *User) FindByUsername(username string) (*model.User, error) {
 		return nil, err
 	}
 
-	return user, nil
+	return user.Format(), nil
 }
 
 func (u *User) FindAll(query *Query) (list []*model.User, total int64, err error) {
@@ -80,7 +80,7 @@ func (u *User) userExist(k, v string) (*model.User, bool) {
 		return nil, false
 	}
 
-	return user, true
+	return user.Format(), true
 }
 
 func (u *User) Create(user *model.User, storageMax uint64) (*model.User, error) {

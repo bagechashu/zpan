@@ -50,10 +50,10 @@ type User struct {
 	Email     string             `json:"email" gorm:"size:32;unique_index;not null"`
 	Username  string             `json:"username" gorm:"size:20;unique_index;not null"`
 	Password  string             `json:"-" gorm:"size:100;not null"`
-	Status    uint8              `json:"-" gorm:"size:1;not null"`
-	StatusTxt string             `json:"status" gorm:"-"`
-	Roles     string             `json:"-" gorm:"size:64;not null"`
-	RoleTxt   string             `json:"role" gorm:"-"`
+	Status    uint8              `json:"status" gorm:"size:1;not null"`
+	StatusTxt string             `json:"status_txt" gorm:"-"`
+	Roles     string             `json:"roles" gorm:"size:64;not null"`
+	RoleTxt   string             `json:"roles_txt" gorm:"-"`
 	Ticket    string             `json:"ticket" gorm:"size:6;unique_index;not null"`
 	Profile   UserProfile        `json:"profile,omitempty" gorm:"foreignKey:Uid"`
 	Storage   entity.UserStorage `json:"storage,omitempty" gorm:"foreignKey:Uid"`
