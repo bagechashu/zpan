@@ -61,9 +61,12 @@ func (rs *UserResource) create(c *gin.Context) {
 		return
 	}
 
-	if !auth.IsAdmin(c) && rs.sUser.InviteRequired() && p.Ticket == "" {
-		ginutil.JSONBadRequest(c, fmt.Errorf("ticket required"))
-		return
+	// Non-admin users can only create users if invite system is enabled and valid ticket is provided
+	if !auth.IsAdmin(c) {
+		if !rs.sUser.InviteRequired() || p.Ticket == "" {
+			ginutil.JSONBadRequest(c, fmt.Errorf("access denied"))
+			return
+		}
 	}
 
 	opt := model.NewUserCreateOption()
