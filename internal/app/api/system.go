@@ -108,6 +108,7 @@ func (rs *Option) createAdministrator(c *gin.Context) {
 		return
 	}
 
+	// 设置已安装完成的标志
 	viper.Set("installed", true)
 	ginutil.JSON(c)
 
