@@ -40,13 +40,23 @@ func (v *Vfs) Create(ctx context.Context, m *entity.Matter) error {
 		}
 
 		if err := v.uploader.CreateUploadURL(ctx, m); err != nil {
-			return err
+			return fmt.Errorf("failed to create upload URL: %v", err)
 		}
+	}
 
+	// Try to create the matter in database
+	if err := v.matterRepo.Create(ctx, m); err != nil {
+		// Log the error for debugging
+		return fmt.Errorf("failed to create matter record: %v", err)
+	}
+
+	// Send event only after successful database creation
+	// This prevents background tasks from processing records that don't exist in the database
+	if !m.IsDir() {
 		defer v.eventWorker.sendEvent(EventActionCreated, m)
 	}
 
-	return v.matterRepo.Create(ctx, m)
+	return nil
 }
 
 func (v *Vfs) List(ctx context.Context, option *repo.MatterListOption) ([]*entity.Matter, int64, error) {

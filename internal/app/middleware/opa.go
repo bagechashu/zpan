@@ -32,17 +32,15 @@ type Input struct {
 var oparules string
 
 func OpaMiddleware(c *gin.Context) {
-	bw := NewWriter(c.Writer)
-	c.Writer = bw
-	c.Next()
-
+	// Check authorization BEFORE processing the request
+	// This prevents unnecessary resource initialization and database queries for unauthorized requests
 	input := &Input{
 		Uid:        auth.UidGet(c),
 		Roles:      c.GetStringSlice("role"),
 		Path:       c.FullPath(),
 		Method:     c.Request.Method,
 		PathParams: c.Params,
-		Resource:   bw.extractResource(),
+		Resource:   nil, // Resource is not available before processing the request
 		Config: Config{
 			ShareAllFiles: viper.GetBool("share.all_files"),
 		},
@@ -56,6 +54,13 @@ func OpaMiddleware(c *gin.Context) {
 		return
 	}
 
+	// Authorization passed, now process the request with response buffering for audit checks
+	bw := NewWriter(c.Writer)
+	c.Writer = bw
+	c.Next()
+
+	// Optionally: Perform post-response audit checks here
+	// by accessing bw.extractResource() if needed
 	bw.WriteNow()
 }
 

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/saltbo/gopkg/ginutil"
 	"github.com/saltbo/zpan/internal/app/repo"
@@ -82,7 +84,13 @@ func (rs *FileResource) create(c *gin.Context) {
 
 	m := p.ToMatter(auth.UidGet(c))
 	if err := rs.fs.Create(c, m); err != nil {
-		ginutil.JSONServerError(c, err)
+		// Distinguish between business logic errors and server errors
+		// File already exists is a client error (400), not a server error (500)
+		if strings.Contains(err.Error(), "cannot upload file with the same name") {
+			ginutil.JSONBadRequest(c, err)
+		} else {
+			ginutil.JSONServerError(c, err)
+		}
 		return
 	}
 

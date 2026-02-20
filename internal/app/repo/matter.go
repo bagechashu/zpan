@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/saltbo/gopkg/timeutil"
+	"github.com/saltbo/gopkg/strutil"
 	"github.com/saltbo/zpan/internal/app/entity"
 	"github.com/saltbo/zpan/internal/app/repo/query"
+	"github.com/saltbo/zpan/internal/pkg/logger"
 	"github.com/samber/lo"
 	"gorm.io/gen"
 	"gorm.io/gorm"
@@ -103,6 +102,7 @@ func (db *MatterDBQuery) PathExist(ctx context.Context, filepath string) bool {
 
 func (db *MatterDBQuery) FindAll(ctx context.Context, opts *MatterListOption) ([]*entity.Matter, int64, error) {
 	conds := make([]gen.Condition, 0)
+	logger.Debug("FindAll with options: %+v", opts)
 	if opts.Uid != 0 {
 		conds = append(conds, db.Q().Matter.Uid.Eq(opts.Uid))
 	}
@@ -112,6 +112,7 @@ func (db *MatterDBQuery) FindAll(ctx context.Context, opts *MatterListOption) ([
 
 	if opts.Keyword != "" {
 		conds = append(conds, db.Q().Matter.Name.Like(fmt.Sprintf("%%%s%%", opts.Keyword)))
+		conds = append(conds, db.Q().Matter.Parent.Eq(opts.Dir))
 	} else if !opts.Draft {
 		conds = append(conds, db.Q().Matter.Parent.Eq(opts.Dir))
 	}
@@ -137,18 +138,103 @@ func (db *MatterDBQuery) FindAll(ctx context.Context, opts *MatterListOption) ([
 }
 
 func (db *MatterDBQuery) Create(ctx context.Context, m *entity.Matter) error {
-	if exist := db.PathExist(ctx, m.Parent); !exist {
-		return fmt.Errorf("base dir not exist")
+	// Auto-create missing directories if parent doesn't exist
+	// This is done in a separate operation to reduce lock contention
+	if m.Parent != "" {
+		if err := db.createMissingDirs(ctx, m.Uid, m.Sid, m.Parent); err != nil {
+			return err
+		}
 	}
 
-	if exist := db.PathExist(ctx, m.FullPath()); exist {
-		// auto append a suffix if matter exist
-		ext := filepath.Ext(m.Name)
-		suffix := fmt.Sprintf("_%s", timeutil.Format(time.Now(), "YYYYMMDD_HHmmss"))
-		m.Name = strings.TrimSuffix(m.Name, ext) + suffix + ext
+	// Create the file/folder itself
+	return db.createMatter(ctx, m)
+}
+
+// createMatter handles file/folder creation
+func (db *MatterDBQuery) createMatter(ctx context.Context, m *entity.Matter) error {
+	// Check if file already exists
+	existingCount, err := db.Q().Matter.WithContext(ctx).
+		Where(db.Q().Matter.Name.Eq(m.Name)).
+		Where(db.Q().Matter.Parent.Eq(m.Parent)).
+		Where(db.Q().Matter.Uid.Eq(m.Uid)).
+		Where(db.Q().Matter.Sid.Eq(m.Sid)).
+		Count()
+
+	if err != nil {
+		return fmt.Errorf("failed to check existing file: %v", err)
 	}
 
+	if existingCount > 0 {
+		// Reject duplicate file upload with clear error message
+		return fmt.Errorf("cannot upload file with the same name, please rename the file")
+	}
+
+	// Create the matter
 	return db.Q().Matter.Create(m)
+}
+
+// createMissingDirs creates missing directories
+func (db *MatterDBQuery) createMissingDirs(ctx context.Context, uid, sid int64, dirPath string) error {
+	dirPath = strings.TrimSuffix(dirPath, "/")
+	if dirPath == "" {
+		return nil
+	}
+
+	// Perform all operations within a single transaction
+	return db.Q().Transaction(func(tx *query.Query) error {
+		parts := strings.Split(dirPath, "/")
+		currentPath := ""
+
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+
+			var parentVal string
+			if currentPath == "" {
+				parentVal = ""
+			} else {
+				parentVal = currentPath + "/"
+			}
+
+			// Check if directory already exists
+			count, err := tx.Matter.WithContext(ctx).
+				Where(tx.Matter.Name.Eq(part)).
+				Where(tx.Matter.DirType.Eq(entity.DirTypeUser)).
+				Where(tx.Matter.Uid.Eq(uid)).
+				Where(tx.Matter.Sid.Eq(sid)).
+				Where(tx.Matter.Parent.Eq(parentVal)).
+				Count()
+
+			if err != nil {
+				return err
+			}
+
+			// Create directory if it doesn't exist
+			if count == 0 {
+				dir := &entity.Matter{
+					Uid:     uid,
+					Sid:     sid,
+					Alias:   strutil.RandomText(16),
+					Name:    part,
+					DirType: entity.DirTypeUser,
+					Parent:  parentVal,
+				}
+				if err := tx.Matter.Create(dir); err != nil {
+					return err
+				}
+			}
+
+			// Update path for next iteration
+			if currentPath == "" {
+				currentPath = part
+			} else {
+				currentPath = currentPath + "/" + part
+			}
+		}
+
+		return nil
+	})
 }
 
 func (db *MatterDBQuery) Copy(ctx context.Context, id int64, to string) (*entity.Matter, error) {
@@ -196,7 +282,7 @@ func (db *MatterDBQuery) Update(ctx context.Context, id int64, m *entity.Matter)
 			emFullPath := em.FullPath()
 			emPathWithoutSlash := strings.TrimLeft(emFullPath, "/")
 			mFullPath := m.FullPath()
-			
+
 			updated := map[string]any{"parent": gorm.Expr("REPLACE(parent, ?, ?)", emFullPath, mFullPath)}
 			q := tq.Where(tx.Matter.Parent.Eq(emFullPath)).Or(
 				tx.Matter.Parent.Eq(emPathWithoutSlash),
@@ -228,7 +314,7 @@ func (db *MatterDBQuery) Delete(ctx context.Context, id int64) error {
 			// 如果是目录，则需要把该目录下的子文件/目录一并删除
 			fullPath := m.FullPath()
 			pathWithoutLeadingSlash := strings.TrimLeft(fullPath, "/")
-			
+
 			// Build query conditions that handle different parent path formats
 			q := tq.Where(tx.Matter.Parent.Eq(fullPath)).Or(
 				tx.Matter.Parent.Eq(pathWithoutLeadingSlash),
@@ -237,11 +323,11 @@ func (db *MatterDBQuery) Delete(ctx context.Context, id int64) error {
 			).Or(
 				tx.Matter.Parent.Like(pathWithoutLeadingSlash + "%"),
 			)
-			
+
 			if _, err := q.Update(tx.Matter.TrashedBy, m.TrashedBy); err != nil {
 				return err
 			}
-			
+
 			q = tq.Where(tx.Matter.Parent.Eq(fullPath)).Or(
 				tx.Matter.Parent.Eq(pathWithoutLeadingSlash),
 			).Or(
@@ -249,7 +335,7 @@ func (db *MatterDBQuery) Delete(ctx context.Context, id int64) error {
 			).Or(
 				tx.Matter.Parent.Like(pathWithoutLeadingSlash + "%"),
 			)
-			
+
 			if _, err := q.Delete(); err != nil {
 				return err
 			}
@@ -309,7 +395,7 @@ func (db *MatterDBQuery) findChildren(ctx context.Context, m *entity.Matter, wit
 	// Build query conditions that handle different parent path formats
 	fullPath := m.FullPath()
 	pathWithoutLeadingSlash := strings.TrimLeft(fullPath, "/")
-	
+
 	// Find both direct children and nested items
 	// Handle cases where parent might be stored in different formats
 	return q.Where(

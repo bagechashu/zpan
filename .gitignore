@@ -13,7 +13,7 @@
 build
 *.out
 zpan.yml
-zpan.db
+zpan.db*
 config.yml
 
 # Editor auto file
