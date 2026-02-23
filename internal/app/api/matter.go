@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -196,7 +197,23 @@ func (rs *FileResource) copy(c *gin.Context) {
 }
 
 func (rs *FileResource) delete(c *gin.Context) {
-	if err := rs.fs.Delete(c, c.Param("alias")); err != nil {
+	alias := c.Param("alias")
+	
+	// Get the matter to check ownership
+	matter, err := rs.fs.Get(c, alias)
+	if err != nil {
+		ginutil.JSONBadRequest(c, err)
+		return
+	}
+
+	// Check if user is the owner or is admin
+	uid := auth.UidGet(c)
+	if matter.Uid != uid && !auth.IsAdmin(c) {
+		ginutil.JSONUnauthorized(c, fmt.Errorf("You can only delete files which uploaded by yourself"))
+		return
+	}
+
+	if err := rs.fs.Delete(c, alias); err != nil {
 		ginutil.JSONServerError(c, err)
 		return
 	}
