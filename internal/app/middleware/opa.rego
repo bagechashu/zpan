@@ -102,7 +102,15 @@ requires_login if {
     # GET/POST/PATCH/DELETE /api/matters/** (仅登录用户可修改自己的资源)
     input.method in ["GET", "POST", "PATCH", "DELETE"]
     startswith(input.path, "/api/matters")
-}
+} else if {
+    # GET/POST/PATCH/DELETE /api/shares/** (登录用户可以访问所有分享接口)
+    input.method in ["GET", "POST", "PATCH", "DELETE"]
+    startswith(input.path, "/api/shares/")
+} else if {
+    # GET/POST/PATCH/DELETE /api/recycles/** (登录用户可以访问所有回收站接口)
+    input.method in ["GET", "POST", "PATCH", "DELETE"]
+    startswith(input.path, "/api/recycles/")
+} 
 
 # 检查是否是匿名用户
 is_anonymous if {

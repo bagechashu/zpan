@@ -2,8 +2,12 @@
 FROM golang:alpine AS build
 
 # ENV GOPROXY=https://goproxy.cn
-ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64 
+ENV CGO_ENABLED=1 GOOS=linux GOARCH=amd64 
 WORKDIR /app
+
+# Install build dependencies required for cgo (sqlite3)
+RUN apk add --no-cache gcc musl-dev
+
 COPY . .
 
 RUN go build -ldflags="-w -s" -o zpan
