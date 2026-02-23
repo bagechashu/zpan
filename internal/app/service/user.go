@@ -15,8 +15,8 @@ import (
 	"github.com/saltbo/zpan/internal/app/model"
 )
 
-// LDAPPasswordPrefix marks a user as LDAP-only, prevents local password auth
-const LDAPPasswordPrefix = "!LDAP"
+const LDAPUserPrefix = "ldap_"     // Prefix for usernames created from LDAP authentication
+const LDAPPasswordPrefix = "!LDAP" // Prefix for passwords created from LDAP authentication
 
 type User struct {
 	dUser *dao.User
@@ -95,7 +95,7 @@ func (u *User) Active(token string) error {
 func (u *User) SignIn(usernameOrEmail, password string, ttl int) (*model.User, error) {
 	var user *model.User
 	var exist bool
-	
+
 	// Try LDAP authentication if enabled
 	ldapEnabled := u.auth != nil && u.auth.IsEnabled()
 	if ldapEnabled {
@@ -107,7 +107,7 @@ func (u *User) SignIn(usernameOrEmail, password string, ttl int) (*model.User, e
 				// Create new user from LDAP
 				user = &model.User{
 					Email:    email,
-					Username: fmt.Sprintf("mu%s", strutil.RandomText(18)),
+					Username: LDAPUserPrefix + usernameOrEmail, // Prefix to distinguish LDAP users
 					Password: LDAPPasswordPrefix + strutil.RandomText(32),
 					Roles:    model.RoleMember,
 					Ticket:   strutil.RandomText(6),

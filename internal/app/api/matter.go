@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/saltbo/gopkg/ginutil"
+	"github.com/saltbo/zpan/internal/app/dao"
 	"github.com/saltbo/zpan/internal/app/repo"
 	"github.com/saltbo/zpan/internal/app/usecase/uploader"
 	"github.com/saltbo/zpan/internal/app/usecase/vfs"
@@ -14,12 +15,17 @@ import (
 )
 
 type FileResource struct {
-	fs vfs.VirtualFs
-	up uploader.Uploader
+	fs       vfs.VirtualFs
+	up       uploader.Uploader
+	userDao  *dao.User
 }
 
 func NewFileResource(fs vfs.VirtualFs, up uploader.Uploader) *FileResource {
-	return &FileResource{fs: fs, up: up}
+	return &FileResource{
+		fs:      fs,
+		up:      up,
+		userDao: dao.NewUser(),
+	}
 }
 
 func (rs *FileResource) Register(router *gin.RouterGroup) {
@@ -58,6 +64,26 @@ func (rs *FileResource) findAll(c *gin.Context) {
 	if err != nil {
 		ginutil.JSONServerError(c, err)
 		return
+	}
+
+	// Add uploader username information to each matter
+	userMap := make(map[int64]string)
+	for _, m := range list {
+		if _, exists := userMap[m.Uid]; !exists {
+			// Get user info from database
+			user, err := rs.userDao.Find(m.Uid)
+			if err == nil && user != nil {
+				userMap[m.Uid] = user.Username
+			} else {
+				userMap[m.Uid] = "Unknown"
+			}
+		}
+
+		// Add username to Uploader field
+		if m.Uploader == nil {
+			m.Uploader = make(map[string]any)
+		}
+		m.Uploader["username"] = userMap[m.Uid]
 	}
 
 	ginutil.JSONList(c, list, total)

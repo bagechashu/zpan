@@ -98,6 +98,10 @@ requires_login if {
     # GET /api/storages (仅登录用户可查看存储列表)
     input.method == "GET"
     input.path == "/api/storages"
+} else if {
+    # GET/POST/PATCH/DELETE /api/matters/** (仅登录用户可修改自己的资源)
+    input.method in ["GET", "POST", "PATCH", "DELETE"]
+    startswith(input.path, "/api/matters")
 }
 
 # 检查是否是匿名用户
