@@ -209,7 +209,7 @@ func (rs *FileResource) delete(c *gin.Context) {
 	// Check if user is the owner or is admin
 	uid := auth.UidGet(c)
 	if matter.Uid != uid && !auth.IsAdmin(c) {
-		ginutil.JSONUnauthorized(c, fmt.Errorf("You can only delete files which uploaded by yourself"))
+		ginutil.JSONForbidden(c, fmt.Errorf("You can only delete files which uploaded by yourself"))
 		return
 	}
 
