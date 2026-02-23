@@ -105,11 +105,11 @@ requires_login if {
 } else if {
     # GET/POST/PATCH/DELETE /api/shares/** (登录用户可以访问所有分享接口)
     input.method in ["GET", "POST", "PATCH", "DELETE"]
-    startswith(input.path, "/api/shares/")
+    startswith(input.path, "/api/shares")
 } else if {
     # GET/POST/PATCH/DELETE /api/recycles/** (登录用户可以访问所有回收站接口)
     input.method in ["GET", "POST", "PATCH", "DELETE"]
-    startswith(input.path, "/api/recycles/")
+    startswith(input.path, "/api/recycles")
 } 
 
 # 检查是否是匿名用户
