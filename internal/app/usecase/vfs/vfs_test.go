@@ -71,13 +71,19 @@ func TestVfs_Move(t *testing.T) {
 		Alias:  "test",
 		Parent: "/",
 		Name:   "abc.txt",
+		Object: "test/abc.txt",
 	}
 	ctx := context.Background()
 	mockMatter := mock.NewMatter()
 	assert.NoError(t, mockMatter.Create(ctx, matter))
-	vfs := NewVfs(mockMatter, nil, nil, nil)
+	vfs := NewVfs(mockMatter, nil, nil, &uploader.FakeUploader{MoveObjectFn: func(ctx context.Context, m *entity.Matter, to string) (string, error) {
+		assert.Equal(t, "test/abc.txt", m.Object)
+		assert.Equal(t, "newDir", to)
+		return "test/newDir/abc.txt", nil
+	}})
 	assert.NoError(t, vfs.Move(context.Background(), "test", "newDir"))
 	assert.Equal(t, "newDir/abc.txt", matter.FullPath())
+	assert.Equal(t, "test/newDir/abc.txt", matter.Object)
 }
 
 func TestVfs_Copy(t *testing.T) {

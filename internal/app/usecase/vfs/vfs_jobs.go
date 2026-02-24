@@ -13,7 +13,7 @@ import (
 func (v *Vfs) matterCreatedEventHandler(matter *entity.Matter) error {
 	c := cron.New()
 	c.Start()
-	return c.AddFunc("@every 10s", func() {
+	return c.AddFunc("@every 15s", func() {
 		ctx := context.Background()
 		if err := v.uploader.UploadDone(ctx, matter); err != nil {
 			return

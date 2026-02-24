@@ -2,6 +2,10 @@ package uploader
 
 import (
 	"context"
+	"fmt"
+	"path"
+	"strings"
+	"time"
 
 	"github.com/saltbo/zpan/internal/app/entity"
 	"github.com/saltbo/zpan/internal/app/repo"
@@ -9,6 +13,8 @@ import (
 )
 
 var _ Uploader = (*CloudUploader)(nil)
+
+const uploadDoneTimeout = 30 * time.Minute
 
 type CloudUploader struct {
 	storage    storage.Storage
@@ -63,6 +69,14 @@ func (u *CloudUploader) CreateVisitURL(ctx context.Context, m *entity.Matter) er
 }
 
 func (u *CloudUploader) UploadDone(ctx context.Context, m *entity.Matter) error {
+	if !m.CreatedAt.IsZero() && time.Since(m.CreatedAt) >= uploadDoneTimeout {
+		if err := u.matterRepo.Delete(ctx, m.Id); err != nil {
+			return err
+		}
+
+		return fmt.Errorf("upload timeout, matter deleted")
+	}
+
 	provider, err := u.storage.GetProvider(ctx, m.Sid)
 	if err != nil {
 		return err
@@ -74,4 +88,31 @@ func (u *CloudUploader) UploadDone(ctx context.Context, m *entity.Matter) error 
 
 	m.SetUploadedAt()
 	return u.matterRepo.Update(ctx, m.Id, m)
+}
+
+func (u *CloudUploader) MoveObject(ctx context.Context, m *entity.Matter, to string) (string, error) {
+	if m.IsDir() || m.Object == "" {
+		return m.Object, nil
+	}
+
+	s, err := u.storage.Get(ctx, m.Sid)
+	if err != nil {
+		return "", err
+	}
+
+	provider, err := u.storage.GetProvider(ctx, m.Sid)
+	if err != nil {
+		return "", err
+	}
+
+	newObject := path.Join(s.RootPath, strings.Trim(to, "/"), m.Name)
+	if newObject == m.Object {
+		return m.Object, nil
+	}
+
+	if err := provider.Move(m.Object, newObject); err != nil {
+		return "", err
+	}
+
+	return newObject, nil
 }

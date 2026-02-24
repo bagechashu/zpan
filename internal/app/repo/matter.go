@@ -296,7 +296,7 @@ func (db *MatterDBQuery) Update(ctx context.Context, id int64, m *entity.Matter)
 			}
 		}
 
-		_, err := tq.Where(tx.Matter.Id.Eq(id)).Select(tx.Matter.Name, tx.Matter.Parent, tx.Matter.UploadedAt).Updates(m)
+		_, err := tq.Where(tx.Matter.Id.Eq(id)).Select(tx.Matter.Name, tx.Matter.Parent, tx.Matter.Object, tx.Matter.UploadedAt).Updates(m)
 		return err
 	})
 }

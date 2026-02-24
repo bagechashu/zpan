@@ -10,4 +10,5 @@ type Uploader interface {
 	CreateUploadURL(ctx context.Context, m *entity.Matter) error
 	CreateVisitURL(ctx context.Context, m *entity.Matter) error
 	UploadDone(ctx context.Context, m *entity.Matter) error
+	MoveObject(ctx context.Context, m *entity.Matter, to string) (string, error)
 }

@@ -100,6 +100,18 @@ func (v *Vfs) Move(ctx context.Context, alias string, to string) error {
 		return fmt.Errorf("dir already has the same name file")
 	}
 
+	if !m.IsDir() && m.Object != "" {
+		if v.uploader == nil {
+			return fmt.Errorf("uploader is required to move file object")
+		}
+
+		newObject, err := v.uploader.MoveObject(ctx, m, to)
+		if err != nil {
+			return err
+		}
+		m.Object = newObject
+	}
+
 	m.Parent = to
 	return v.matterRepo.Update(ctx, m.Id, m)
 }

@@ -166,9 +166,16 @@ func (p *S3Provider) List(prefix string) ([]Object, error) {
 }
 
 func (p *S3Provider) Move(object, newObject string) error {
+	object = strings.TrimPrefix(object, "/")
+	newObject = strings.TrimPrefix(newObject, "/")
+	if object == newObject {
+		return nil
+	}
+
+	copySource := p.bucket + "/" + url.PathEscape(object)
 	input := &s3.CopyObjectInput{
 		Bucket:     aws.String(p.bucket),
-		CopySource: aws.String(object),
+		CopySource: aws.String(copySource),
 		Key:        aws.String(newObject),
 	}
 	if _, err := p.client.CopyObject(input); err != nil {
