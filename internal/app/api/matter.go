@@ -157,7 +157,8 @@ func (rs *FileResource) rename(c *gin.Context) {
 		return
 	}
 
-	if err := rs.fs.Rename(c, c.Param("alias"), p.NewName); err != nil {
+	ctx := vfs.CtxSetShareAllFilesStatus(c.Request.Context(), viper.GetBool("share.all_files"))
+	if err := rs.fs.Rename(ctx, c.Param("alias"), p.NewName); err != nil {
 		ginutil.JSONServerError(c, err)
 		return
 	}

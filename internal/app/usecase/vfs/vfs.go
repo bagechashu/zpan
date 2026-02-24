@@ -103,7 +103,23 @@ func (v *Vfs) Rename(ctx context.Context, alias string, newName string) error {
 		return fmt.Errorf("dir already has the same name file")
 	}
 
+	oldName := m.Name
 	m.Name = newName
+
+	if shouldMoveObject(ctx) && !m.IsDir() && m.Object != "" {
+		if v.uploader == nil {
+			m.Name = oldName
+			return fmt.Errorf("uploader is required to rename file object")
+		}
+
+		newObject, err := v.uploader.MoveObject(ctx, m, m.Parent)
+		if err != nil {
+			m.Name = oldName
+			return err
+		}
+		m.Object = newObject
+	}
+
 	return v.matterRepo.Update(ctx, m.Id, m)
 }
 

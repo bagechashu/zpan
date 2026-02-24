@@ -66,6 +66,55 @@ func TestVfs_Rename(t *testing.T) {
 	assert.Equal(t, "new.txt", matter.Name)
 }
 
+func TestVfs_Rename_MoveObjectWhenEnabled(t *testing.T) {
+	matter := &entity.Matter{
+		Alias:  "test",
+		Parent: "docs",
+		Name:   "abc.txt",
+		Object: "bucket/docs/abc.txt",
+	}
+
+	ctx := context.Background()
+	mockMatter := mock.NewMatter()
+	assert.NoError(t, mockMatter.Create(ctx, matter))
+
+	vfs := NewVfs(mockMatter, nil, nil, &uploader.FakeUploader{MoveObjectFn: func(ctx context.Context, m *entity.Matter, to string) (string, error) {
+		assert.Equal(t, "new.txt", m.Name)
+		assert.Equal(t, "docs", to)
+		return "bucket/docs/new.txt", nil
+	}})
+
+	renameCtx := CtxSetShareAllFilesStatus(context.Background(), true)
+	assert.NoError(t, vfs.Rename(renameCtx, "test", "new.txt"))
+	assert.Equal(t, "new.txt", matter.Name)
+	assert.Equal(t, "bucket/docs/new.txt", matter.Object)
+}
+
+func TestVfs_Rename_NoObjectMoveWhenDisabled(t *testing.T) {
+	matter := &entity.Matter{
+		Alias:  "test",
+		Parent: "docs",
+		Name:   "abc.txt",
+		Object: "bucket/docs/abc.txt",
+	}
+
+	ctx := context.Background()
+	mockMatter := mock.NewMatter()
+	assert.NoError(t, mockMatter.Create(ctx, matter))
+
+	called := false
+	vfs := NewVfs(mockMatter, nil, nil, &uploader.FakeUploader{MoveObjectFn: func(ctx context.Context, m *entity.Matter, to string) (string, error) {
+		called = true
+		return "bucket/docs/new.txt", nil
+	}})
+
+	renameCtx := CtxSetShareAllFilesStatus(context.Background(), false)
+	assert.NoError(t, vfs.Rename(renameCtx, "test", "new.txt"))
+	assert.False(t, called)
+	assert.Equal(t, "new.txt", matter.Name)
+	assert.Equal(t, "bucket/docs/abc.txt", matter.Object)
+}
+
 func TestVfs_Move(t *testing.T) {
 	matter := &entity.Matter{
 		Alias:  "test",
@@ -81,7 +130,8 @@ func TestVfs_Move(t *testing.T) {
 		assert.Equal(t, "newDir", to)
 		return "test/newDir/abc.txt", nil
 	}})
-	assert.NoError(t, vfs.Move(context.Background(), "test", "newDir"))
+	moveCtx := CtxSetShareAllFilesStatus(context.Background(), true)
+	assert.NoError(t, vfs.Move(moveCtx, "test", "newDir"))
 	assert.Equal(t, "newDir/abc.txt", matter.FullPath())
 	assert.Equal(t, "test/newDir/abc.txt", matter.Object)
 }
