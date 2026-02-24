@@ -86,6 +86,31 @@ func TestVfs_Move(t *testing.T) {
 	assert.Equal(t, "test/newDir/abc.txt", matter.Object)
 }
 
+func TestVfs_Move_NoObjectMoveWhenDisabled(t *testing.T) {
+	matter := &entity.Matter{
+		Alias:  "test",
+		Parent: "/",
+		Name:   "abc.txt",
+		Object: "test/abc.txt",
+	}
+
+	ctx := context.Background()
+	mockMatter := mock.NewMatter()
+	assert.NoError(t, mockMatter.Create(ctx, matter))
+
+	called := false
+	vfs := NewVfs(mockMatter, nil, nil, &uploader.FakeUploader{MoveObjectFn: func(ctx context.Context, m *entity.Matter, to string) (string, error) {
+		called = true
+		return "test/newDir/abc.txt", nil
+	}})
+
+	moveCtx := CtxSetShareAllFilesStatus(context.Background(), false)
+	assert.NoError(t, vfs.Move(moveCtx, "test", "newDir"))
+	assert.False(t, called)
+	assert.Equal(t, "test/abc.txt", matter.Object)
+	assert.Equal(t, "newDir/abc.txt", matter.FullPath())
+}
+
 func TestVfs_Copy(t *testing.T) {
 	matter := &entity.Matter{
 		Alias:  "test",

@@ -21,6 +21,23 @@ type Vfs struct {
 	eventWorker    *EventWorker
 }
 
+type moveObjectCtxkeyType string
+
+const moveObjectCtx moveObjectCtxkeyType = "vfs.move.object.enabled"
+
+func CtxSetShareAllFilesStatus(ctx context.Context, enabled bool) context.Context {
+	return context.WithValue(ctx, moveObjectCtx, enabled)
+}
+
+func shouldMoveObject(ctx context.Context) bool {
+	v, ok := ctx.Value(moveObjectCtx).(bool)
+	if !ok {
+		return false
+	}
+
+	return v
+}
+
 func NewVfs(matterRepo repo.Matter, recycleBinRepo repo.RecycleBin, userRepo repo.User, uploader uploader.Uploader) *Vfs {
 	vfs := &Vfs{matterRepo: matterRepo, recycleBinRepo: recycleBinRepo, userRepo: userRepo, uploader: uploader, eventWorker: NewWorker()}
 	vfs.eventWorker.registerEventHandler(EventActionCreated, vfs.matterCreatedEventHandler)
@@ -100,7 +117,7 @@ func (v *Vfs) Move(ctx context.Context, alias string, to string) error {
 		return fmt.Errorf("dir already has the same name file")
 	}
 
-	if !m.IsDir() && m.Object != "" {
+	if shouldMoveObject(ctx) && !m.IsDir() && m.Object != "" {
 		if v.uploader == nil {
 			return fmt.Errorf("uploader is required to move file object")
 		}

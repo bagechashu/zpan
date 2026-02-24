@@ -16,9 +16,9 @@ import (
 )
 
 type FileResource struct {
-	fs       vfs.VirtualFs
-	up       uploader.Uploader
-	userDao  *dao.User
+	fs      vfs.VirtualFs
+	up      uploader.Uploader
+	userDao *dao.User
 }
 
 func NewFileResource(fs vfs.VirtualFs, up uploader.Uploader) *FileResource {
@@ -172,7 +172,8 @@ func (rs *FileResource) move(c *gin.Context) {
 		return
 	}
 
-	if err := rs.fs.Move(c, c.Param("alias"), p.NewDir); err != nil {
+	ctx := vfs.CtxSetShareAllFilesStatus(c.Request.Context(), viper.GetBool("share.all_files"))
+	if err := rs.fs.Move(ctx, c.Param("alias"), p.NewDir); err != nil {
 		ginutil.JSONServerError(c, err)
 		return
 	}
@@ -198,7 +199,7 @@ func (rs *FileResource) copy(c *gin.Context) {
 
 func (rs *FileResource) delete(c *gin.Context) {
 	alias := c.Param("alias")
-	
+
 	// Get the matter to check ownership
 	matter, err := rs.fs.Get(c, alias)
 	if err != nil {
