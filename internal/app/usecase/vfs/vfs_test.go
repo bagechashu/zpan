@@ -115,6 +115,34 @@ func TestVfs_Rename_NoObjectMoveWhenDisabled(t *testing.T) {
 	assert.Equal(t, "bucket/docs/abc.txt", matter.Object)
 }
 
+func TestVfs_Rename_NoConflictAcrossUsers(t *testing.T) {
+	current := &entity.Matter{
+		Id:     1,
+		Alias:  "self",
+		Uid:    100,
+		Sid:    1,
+		Parent: "/",
+		Name:   "a.txt",
+	}
+	otherUser := &entity.Matter{
+		Id:     2,
+		Alias:  "other",
+		Uid:    200,
+		Sid:    1,
+		Parent: "/",
+		Name:   "new.txt",
+	}
+
+	ctx := context.Background()
+	mockMatter := mock.NewMatter()
+	assert.NoError(t, mockMatter.Create(ctx, current))
+	assert.NoError(t, mockMatter.Create(ctx, otherUser))
+
+	vfs := NewVfs(mockMatter, nil, nil, nil)
+	assert.NoError(t, vfs.Rename(context.Background(), "self", "new.txt"))
+	assert.Equal(t, "new.txt", current.Name)
+}
+
 func TestVfs_Move(t *testing.T) {
 	matter := &entity.Matter{
 		Alias:  "test",
@@ -159,6 +187,34 @@ func TestVfs_Move_NoObjectMoveWhenDisabled(t *testing.T) {
 	assert.False(t, called)
 	assert.Equal(t, "test/abc.txt", matter.Object)
 	assert.Equal(t, "newDir/abc.txt", matter.FullPath())
+}
+
+func TestVfs_Move_NoConflictAcrossUsers(t *testing.T) {
+	current := &entity.Matter{
+		Id:     1,
+		Alias:  "self",
+		Uid:    100,
+		Sid:    1,
+		Parent: "old",
+		Name:   "a.txt",
+	}
+	otherUser := &entity.Matter{
+		Id:     2,
+		Alias:  "other",
+		Uid:    200,
+		Sid:    1,
+		Parent: "dest",
+		Name:   "a.txt",
+	}
+
+	ctx := context.Background()
+	mockMatter := mock.NewMatter()
+	assert.NoError(t, mockMatter.Create(ctx, current))
+	assert.NoError(t, mockMatter.Create(ctx, otherUser))
+
+	vfs := NewVfs(mockMatter, nil, nil, nil)
+	assert.NoError(t, vfs.Move(context.Background(), "self", "dest"))
+	assert.Equal(t, "dest/a.txt", current.FullPath())
 }
 
 func TestVfs_Copy(t *testing.T) {

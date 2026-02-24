@@ -55,7 +55,26 @@ func (mk *Matter) FindByAlias(ctx context.Context, alias string) (*entity.Matter
 }
 
 func (mk *Matter) PathExist(ctx context.Context, filepath string) bool {
-	_, ok := lo.Find(mk.store, func(item *entity.Matter) bool { return item.FullPath() == filepath })
+	return mk.PathExistWithScope(ctx, filepath, 0, 0, 0)
+}
+
+func (mk *Matter) PathExistWithScope(ctx context.Context, filepath string, uid, sid, excludeID int64) bool {
+	_, ok := lo.Find(mk.store, func(item *entity.Matter) bool {
+		if item.FullPath() != filepath {
+			return false
+		}
+		if uid != 0 && item.Uid != uid {
+			return false
+		}
+		if sid != 0 && item.Sid != sid {
+			return false
+		}
+		if excludeID != 0 && item.Id == excludeID {
+			return false
+		}
+
+		return true
+	})
 	return ok
 }
 

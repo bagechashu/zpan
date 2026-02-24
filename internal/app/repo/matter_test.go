@@ -13,13 +13,13 @@ import (
 func TestMatterDBQuery_PathExist(t *testing.T) {
 	mock, db := newMockDB(t)
 	q := NewMatterDBQuery(db)
-	mock.ExpectQuery("SELECT").WithArgs("to", "path/")
+	mock.ExpectQuery("SELECT").WithArgs("to", "path/", sqlmock.AnyArg())
 	q.PathExist(context.Background(), "/path/to/")
 
-	mock.ExpectQuery("SELECT").WithArgs("a.txt", "path/to/")
+	mock.ExpectQuery("SELECT").WithArgs("a.txt", "path/to/", sqlmock.AnyArg())
 	q.PathExist(context.Background(), "/path/to/a.txt")
 
-	mock.ExpectQuery("SELECT").WithArgs("path", "")
+	mock.ExpectQuery("SELECT").WithArgs("path", "", sqlmock.AnyArg())
 	q.PathExist(context.Background(), "/path")
 
 	// we make sure that all expectations were met
@@ -44,10 +44,10 @@ func TestMatterDBQuery_Update(t *testing.T) {
 			rows: sqlmock.NewRows([]string{"id", "name", "parent", "dirtype"}).
 				AddRow(1, "dir1", "dir0", 1),
 
-			expectChildrenArgs:   []driver.Value{"dir0/dir1/", "dir0/dir1-1/", nowFunc(), "dir0/dir1/%"},
+			expectChildrenArgs:   []driver.Value{"dir0/dir1/", "dir0/dir1-1/", nowFunc(), "dir0/dir1/", "dir0/dir1/", "dir0/dir1/%", "dir0/dir1/%"},
 			expectChildrenResult: sqlmock.NewResult(1, 1),
 
-			expectMainArgs:   []driver.Value{"dir1-1", "dir0/", nil, nowFunc(), 1},
+			expectMainArgs:   []driver.Value{"dir1-1", "dir0/", "", nil, nowFunc(), 1},
 			expectMainResult: sqlmock.NewResult(1, 1),
 		},
 		"update parent with children": {
@@ -55,10 +55,10 @@ func TestMatterDBQuery_Update(t *testing.T) {
 			rows: sqlmock.NewRows([]string{"id", "name", "parent", "dirtype"}).
 				AddRow(2, "dir2", "", 2),
 
-			expectChildrenArgs:   []driver.Value{"dir2/", "dir1/dir2/", nowFunc(), "dir2/%"},
+			expectChildrenArgs:   []driver.Value{"/dir2/", "dir1/dir2/", nowFunc(), "/dir2/", "dir2/", "/dir2/%", "dir2/%"},
 			expectChildrenResult: sqlmock.NewResult(1, 1),
 
-			expectMainArgs:   []driver.Value{"dir2", "dir1/", nil, nowFunc(), 2},
+			expectMainArgs:   []driver.Value{"dir2", "dir1/", "", nil, nowFunc(), 2},
 			expectMainResult: sqlmock.NewResult(1, 1),
 		},
 	}
@@ -66,7 +66,7 @@ func TestMatterDBQuery_Update(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			mock, db := newMockDB(t)
-			mock.ExpectQuery("SELECT").WithArgs(tc.target.Id).
+			mock.ExpectQuery("SELECT").WithArgs(tc.target.Id, sqlmock.AnyArg()).
 				WillReturnRows(tc.rows)
 
 			mock.ExpectBegin()

@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"strings"
+
 	"github.com/saltbo/zpan/internal/pkg/logger"
 	"github.com/saltbo/zpan/pkg/obs"
 )
@@ -21,14 +23,14 @@ func NewOBSProvider(conf *Config) (Provider, error) {
 
 	client, err := obs.New(conf.AccessKey, conf.AccessSecret, conf.Endpoint)
 	if err != nil {
-		logger.Error("Failed to create OBS client", "error", err)
+		logger.Error("[OBSProvider] Failed to create OBS client", "error", err)
 		return nil, err
 	}
-	logger.Debug("OBS client created successfully")
+	logger.Debug("[OBSProvider] OBS client created successfully")
 
 	p, err := newS3Provider(conf)
 	if err != nil {
-		logger.Error("Failed to initialize S3Provider", "error", err)
+		logger.Error("[OBSProvider] Failed to initialize S3Provider", "error", err)
 		return nil, err
 	}
 
@@ -87,4 +89,32 @@ func (p *OBSProvider) SetupCORS() error {
 	}
 	logger.Debug("CORS setup completed successfully")
 	return nil
+}
+
+func (p *OBSProvider) Move(object, newObject string) error {
+	object = strings.TrimPrefix(object, "/")
+	newObject = strings.TrimPrefix(newObject, "/")
+	if object == newObject {
+		return nil
+	}
+
+	logger.Debug("[OBSProvider] Move attempting copy",
+		"bucket", p.bucket,
+		"from", object,
+		"to", newObject)
+
+	_, err := p.client.CopyObject(&obs.CopyObjectInput{
+		ObjectOperationInput: obs.ObjectOperationInput{
+			Bucket: p.bucket,
+			Key:    newObject,
+		},
+		CopySourceBucket: p.bucket,
+		CopySourceKey:    object,
+	})
+	if err != nil {
+		logger.Warn("[OBSProvider] Move copy failed", "from", object, "to", newObject, "error", err)
+		return err
+	}
+
+	return p.ObjectDelete(object)
 }

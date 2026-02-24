@@ -99,7 +99,7 @@ func (v *Vfs) Rename(ctx context.Context, alias string, newName string) error {
 		return err
 	}
 
-	if exist := v.matterRepo.PathExist(ctx, path.Join(m.Parent, newName)); exist {
+	if exist := v.matterRepo.PathExistWithScope(ctx, path.Join(m.Parent, newName), m.Uid, m.Sid, m.Id); exist {
 		return fmt.Errorf("dir already has the same name file")
 	}
 
@@ -129,7 +129,7 @@ func (v *Vfs) Move(ctx context.Context, alias string, to string) error {
 		return err
 	}
 
-	if exist := v.matterRepo.PathExist(ctx, path.Join(to, m.Name)); exist {
+	if exist := v.matterRepo.PathExistWithScope(ctx, path.Join(to, m.Name), m.Uid, m.Sid, m.Id); exist {
 		return fmt.Errorf("dir already has the same name file")
 	}
 

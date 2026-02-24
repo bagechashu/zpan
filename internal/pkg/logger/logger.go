@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	defaultLogger *slog.Logger
+	defaultLogger *slog.Logger = slog.Default()
 	logLevel      slog.Level = slog.LevelInfo // 默认日志级别为 info
 )
 

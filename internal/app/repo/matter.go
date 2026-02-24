@@ -38,6 +38,7 @@ type Matter interface {
 	FindWith(ctx context.Context, opt *MatterFindWithOption) (*entity.Matter, error)
 	FindByAlias(ctx context.Context, alias string) (*entity.Matter, error)
 	PathExist(ctx context.Context, path string) bool
+	PathExistWithScope(ctx context.Context, path string, uid, sid, excludeID int64) bool
 	Copy(ctx context.Context, id int64, to string) (*entity.Matter, error)
 	Recovery(ctx context.Context, id int64) error
 	GetObjects(ctx context.Context, id int64) ([]string, error)
@@ -79,6 +80,10 @@ func (db *MatterDBQuery) FindByAlias(ctx context.Context, alias string) (*entity
 }
 
 func (db *MatterDBQuery) PathExist(ctx context.Context, filepath string) bool {
+	return db.PathExistWithScope(ctx, filepath, 0, 0, 0)
+}
+
+func (db *MatterDBQuery) PathExistWithScope(ctx context.Context, filepath string, uid, sid, excludeID int64) bool {
 	if filepath == "" {
 		return true
 	}
@@ -94,6 +99,15 @@ func (db *MatterDBQuery) PathExist(ctx context.Context, filepath string) bool {
 	conds := []gen.Condition{db.Q().Matter.Name.Eq(name)}
 	if parent != name {
 		conds = append(conds, db.Q().Matter.Parent.Eq(strings.TrimPrefix(parent, "/")))
+	}
+	if uid != 0 {
+		conds = append(conds, db.Q().Matter.Uid.Eq(uid))
+	}
+	if sid != 0 {
+		conds = append(conds, db.Q().Matter.Sid.Eq(sid))
+	}
+	if excludeID != 0 {
+		conds = append(conds, db.Q().Matter.Id.Neq(excludeID))
 	}
 
 	_, err := db.Q().Matter.WithContext(ctx).Where(conds...).First()
@@ -243,7 +257,7 @@ func (db *MatterDBQuery) Copy(ctx context.Context, id int64, to string) (*entity
 		return nil, err
 	}
 
-	if exist := db.PathExist(ctx, path.Join(to, em.Name)); exist {
+	if exist := db.PathExistWithScope(ctx, path.Join(to, em.Name), em.Uid, em.Sid, em.Id); exist {
 		return nil, fmt.Errorf("dir already has the same name file")
 	}
 
@@ -355,7 +369,7 @@ func (db *MatterDBQuery) Recovery(ctx context.Context, id int64) error {
 		return err
 	}
 
-	if !db.PathExist(ctx, m.Parent) {
+	if !db.PathExistWithScope(ctx, m.Parent, m.Uid, m.Sid, m.Id) {
 		return fmt.Errorf("recovery: file parent[%s] not found", m.Parent)
 	}
 
