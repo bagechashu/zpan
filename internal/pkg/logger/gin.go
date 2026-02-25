@@ -3,6 +3,8 @@ package logger
 import (
 	"fmt"
 	"log/slog"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +16,11 @@ func GinSlogMiddleware() gin.HandlerFunc {
 		start := time.Now()
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
+
+		if isStaticAssetRequest(c.Request.Method, path) {
+			c.Next()
+			return
+		}
 
 		c.Next()
 
@@ -72,5 +79,31 @@ func GinSlogMiddleware() gin.HandlerFunc {
 				log.Info("HTTP request processed")
 			}
 		}
+	}
+}
+
+func isStaticAssetRequest(method, requestPath string) bool {
+	if method != "GET" && method != "HEAD" {
+		return false
+	}
+
+	if strings.HasPrefix(requestPath, "/api") {
+		return false
+	}
+
+	if strings.HasPrefix(requestPath, "/css/") ||
+		strings.HasPrefix(requestPath, "/js/") ||
+		strings.HasPrefix(requestPath, "/fonts/") ||
+		strings.HasPrefix(requestPath, "/img/") ||
+		strings.HasPrefix(requestPath, "/images/") ||
+		strings.HasPrefix(requestPath, "/assets/") {
+		return true
+	}
+
+	switch strings.ToLower(path.Ext(requestPath)) {
+	case ".css", ".js", ".mjs", ".map", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".otf":
+		return true
+	default:
+		return false
 	}
 }
