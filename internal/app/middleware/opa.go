@@ -37,7 +37,7 @@ func OpaMiddleware(c *gin.Context) {
 	input := &Input{
 		Uid:        auth.UidGet(c),
 		Roles:      c.GetStringSlice("role"),
-		Path:       c.FullPath(),
+		Path:       c.Request.URL.Path,
 		Method:     c.Request.Method,
 		PathParams: c.Params,
 		Resource:   nil, // Resource is not available before processing the request
@@ -50,6 +50,10 @@ func OpaMiddleware(c *gin.Context) {
 		_ = c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	} else if !rs.Allowed() {
+		if input.Uid == 0 {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 		c.AbortWithStatus(http.StatusForbidden)
 		return
 	}

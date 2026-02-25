@@ -126,15 +126,8 @@ is_admin if {
 # 第二部分：权限决策逻辑
 # ============================================================================
 
-# 匿名用户访问公开路由 → 允许
+# 任何用户访问公开路由 → 允许
 allow if {
-    is_anonymous
-    is_public_route
-}
-
-# 已登录用户访问公开路由 → 允许
-allow if {
-    not is_anonymous
     is_public_route
 }
 
