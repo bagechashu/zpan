@@ -25,7 +25,7 @@ generate: ## generate the static assets
 
 build: mod ## Build the binary file
 	go build -v -o build/bin/$(PROJECT) $(MAINFILE)
-
+	env GOOS=linux GOARCH=amd64 go build -v -o build/bin/$(PROJECT)-linux-amd64 $(MAINFILE)
 swag:
 	swag init -g internal/app/api/router.go --exclude client --parseDependency --parseDepth 1 --output internal/docs
 
