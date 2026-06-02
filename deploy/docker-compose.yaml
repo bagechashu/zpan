@@ -1,0 +1,21 @@
+services:
+  zpan:
+    image: xianleeti/zpan:v0.0.11
+    container_name: zpan
+    command: ["server", "--config=/app/config.yml", "--loglevel=info"]
+    environment:
+      TZ: Asia/Dubai
+    env_file:
+      - .env
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./data:/data 
+    ports:
+      - "8222:8222"
+    restart: always
+    networks:
+      - zpan
+
+networks:
+  zpan:
+    driver: bridge

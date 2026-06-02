@@ -1,0 +1,50 @@
+# 数据库配置
+database:
+  driver: sqlite3
+  dsn: /data/zpan.db
+
+# 日志级别: debug, info, warn, error (default: info)
+loglevel: info
+
+# 文件共享配置
+# 当启用时，所有用户上传的文件对所有认证用户可见
+# 默认为 false（仅文件所有者可见）
+share:
+  all_files: true
+
+# 存储配置 - 预签名 URL 过期时间
+storage:
+  # 上传链接过期时间（秒），默认 600 秒（10分钟）
+  upload_expiration: 600
+  # 下载链接过期时间（秒），默认 300 秒（5分钟）
+  download_expiration: 300
+
+# JWT 配置（认证相关）
+jwt:
+  # JWT 签名密钥 - 必须从环境变量 JWT_SECRET 设置
+  # ⚠️ 重要：不要在配置文件中硬编码密钥！
+  # 生成命令：openssl rand -base64 32
+  # 设置方法：export JWT_SECRET="your-generated-secret"
+  secret: ${JWT_SECRET}
+  # 访问令牌过期时间（秒）- 建议设置为 15 分钟（900）
+  access_token_ttl: 7200
+  # 刷新令牌过期时间（秒） - 当前未使用，为未来留作准备
+  refresh_token_ttl: 604800
+  # Cookie Secure 属性开关（开发模式: false，生产模式: true）
+  cookie_secure: true
+
+# ldap 配置
+ldap:
+  enabled: true
+  url: "ldap://127.0.0.1:389"
+  bind_dn: "cn=admin,dc=example,dc=com"
+  # ⚠️ 重要：不要在配置文件中硬编码密码！
+  # 必须从环境变量 LDAP_BIND_PASSWORD 设置
+  # 设置方法：export LDAP_BIND_PASSWORD="your-password"
+  bind_password: ${LDAP_BIND_PASSWORD}
+  base_dn: "ou=people,dc=example,dc=com"
+  # user_filter: "(uid=%s)"
+  user_filter: "(&(uid=%s)(memberOf=cn=allhands,ou=groups,dc=example,dc=com))"
+  user_attribute: "uid"
+  start_tls: false # Set to true to use STARTTLS on ldap://
+
