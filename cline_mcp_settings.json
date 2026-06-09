@@ -1,0 +1,10 @@
+{
+  "servers": [
+    {
+      "name": "github.com/supermemoryai/supermemory-mcp",
+      "type": "http",
+      "url": "https://supermemory-mcp-app.supermemoryai.workers.dev",
+      "description": "Supermemory MCP - Universal Memory across LLMs"
+    }
+  ]
+}

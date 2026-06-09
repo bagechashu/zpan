@@ -12,6 +12,7 @@ import (
 	"github.com/saltbo/zpan/internal/app/repo/query"
 	"github.com/saltbo/zpan/internal/pkg/logger"
 	"github.com/samber/lo"
+	"github.com/spf13/viper"
 	"gorm.io/gen"
 	"gorm.io/gorm"
 )
@@ -194,6 +195,8 @@ func (db *MatterDBQuery) createMissingDirs(ctx context.Context, uid, sid int64, 
 		return nil
 	}
 
+	sharedAllFiles := viper.GetBool("share.all_files")
+
 	// Perform all operations within a single transaction
 	return db.Q().Transaction(func(tx *query.Query) error {
 		parts := strings.Split(dirPath, "/")
@@ -211,14 +214,18 @@ func (db *MatterDBQuery) createMissingDirs(ctx context.Context, uid, sid int64, 
 				parentVal = currentPath + "/"
 			}
 
-			// Check if directory already exists
-			count, err := tx.Matter.WithContext(ctx).
+			// In shared-all-files mode, directories are global within a storage (sid).
+			// They should be reused across users instead of being duplicated by uid.
+			dirQuery := tx.Matter.WithContext(ctx).
 				Where(tx.Matter.Name.Eq(part)).
 				Where(tx.Matter.DirType.Eq(entity.DirTypeUser)).
-				Where(tx.Matter.Uid.Eq(uid)).
 				Where(tx.Matter.Sid.Eq(sid)).
-				Where(tx.Matter.Parent.Eq(parentVal)).
-				Count()
+				Where(tx.Matter.Parent.Eq(parentVal))
+			if !sharedAllFiles {
+				dirQuery = dirQuery.Where(tx.Matter.Uid.Eq(uid))
+			}
+
+			count, err := dirQuery.Count()
 
 			if err != nil {
 				return err
